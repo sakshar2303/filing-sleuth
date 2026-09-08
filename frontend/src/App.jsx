@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
+import TickerTape from './components/TickerTape';
 import QueryInput from './components/QueryInput';
 import BenchmarkPills from './components/BenchmarkPills';
 import ReasoningTrace from './components/ReasoningTrace';
 import ResultReport from './components/ResultReport';
 import CitationModal from './components/CitationModal';
 import AboutSection from './components/AboutSection';
+import AnalystLaunchpad from './components/AnalystLaunchpad';
+import Footer from './components/Footer';
 import { AlertCircle, FileSearch, Sparkles, BookOpen, ArrowRight } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -21,6 +24,15 @@ export default function App() {
   const [selectedCitation, setSelectedCitation] = useState(null);
   const [error, setError] = useState(null);
   const [serverHealthy, setServerHealthy] = useState(false);
+
+  // Dynamic ambient background glow coordinates
+  const [mousePos, setMousePos] = useState({ x: 50, y: 25 });
+  const handleMouseMove = (e) => {
+    const x = (e.clientX / window.innerWidth) * 100;
+    const y = (e.clientY / window.innerHeight) * 100;
+    setMousePos({ x, y });
+  };
+
 
 
   // Check backend server health
@@ -121,12 +133,29 @@ export default function App() {
   };
 
   return (
-    <div className="app-layout">
+    <div
+      className="app-layout"
+      onMouseMove={handleMouseMove}
+      style={{
+        '--mouse-x': `${mousePos.x}%`,
+        '--mouse-y': `${mousePos.y}%`,
+      }}
+    >
       <Navbar
         isStreamingActive={isLiveStreaming}
         serverHealthy={serverHealthy}
         activeView={activeView}
         setActiveView={setActiveView}
+      />
+
+      {/* Live Financial Ticker Ribbon */}
+      <TickerTape
+        onSelectQuery={(q) => {
+          setActiveView('workspace');
+          setCurrentQuery(q);
+          handleRunQuery(q);
+        }}
+        disabled={isLoading}
       />
 
       <main className="main-container">
@@ -224,32 +253,27 @@ export default function App() {
             {/* Agent Reasoning Trace */}
             <ReasoningTrace trace={trace} isLive={isLiveStreaming} />
 
-            {/* Synthesis Results & Citations */}
+            {/* Synthesis Results & Citations OR Rich Analyst Launchpad */}
             {result ? (
               <ResultReport
                 result={result}
                 onSelectCitation={(cit) => setSelectedCitation(cit)}
               />
             ) : !isLoading && !error && (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '3rem 1rem',
-                  color: 'var(--text-muted)',
-                  border: '1px dashed var(--border-medium)',
-                  borderRadius: '14px',
-                  background: '#ffffff',
+              <AnalystLaunchpad
+                onSelectQuery={(q) => {
+                  setCurrentQuery(q);
+                  handleRunQuery(q);
                 }}
-              >
-                <FileSearch size={40} color="#94a3b8" style={{ margin: '0 auto 1rem' }} />
-                <p style={{ fontSize: '0.95rem' }}>
-                  Select a benchmark question above or type an analyst query to initiate research.
-                </p>
-              </div>
+                disabled={isLoading}
+              />
             )}
           </>
         )}
       </main>
+
+      {/* Institutional Footer */}
+      <Footer onSwitchView={(view) => setActiveView(view)} />
 
       {/* Citation Modal Drawer */}
       <CitationModal
@@ -258,5 +282,5 @@ export default function App() {
       />
     </div>
   );
-
 }
+
