@@ -131,3 +131,35 @@ class TickerResolver:
         """Resolve multiple tickers/names. Returns a dict of query → CompanyInfo."""
         await self._load()
         return {q: await self.resolve(q) for q in queries}
+
+    async def search_companies(self, query: str = "", limit: int = 10) -> list[dict[str, str]]:
+        """Search companies by ticker prefix or name substring for autocomplete."""
+        await self._load()
+        q = query.strip().upper()
+        if not q:
+            # Return popular top companies by default
+            default_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "JPM", "V", "WMT"]
+            res = []
+            for t in default_tickers:
+                if t in self._by_ticker:
+                    info = self._by_ticker[t]
+                    res.append({"ticker": info.ticker, "name": info.name, "cik": info.cik})
+            return res
+
+        matches: list[dict[str, str]] = []
+        # Priority 1: Exact or prefix ticker match
+        for ticker, info in self._by_ticker.items():
+            if ticker.startswith(q):
+                matches.append({"ticker": info.ticker, "name": info.name, "cik": info.cik})
+                if len(matches) >= limit:
+                    return matches
+
+        # Priority 2: Substring in company name
+        for name, info in self._by_name.items():
+            if q in name and not any(m["ticker"] == info.ticker for m in matches):
+                matches.append({"ticker": info.ticker, "name": info.name, "cik": info.cik})
+                if len(matches) >= limit:
+                    return matches
+
+        return matches
+

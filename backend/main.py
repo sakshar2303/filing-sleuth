@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from backend.agent.orchestrator import Orchestrator, PipelineResult, PipelineTraceStep
 from backend.retrieval.sec_client import SECClient
+from backend.retrieval.ticker_resolver import TickerResolver
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("filing_sleuth.api")
@@ -28,13 +29,15 @@ logger = logging.getLogger("filing_sleuth.api")
 BENCHMARK_PATH = Path(__file__).resolve().parent.parent / "evaluation" / "benchmark.json"
 
 sec_client_instance: SECClient | None = None
+ticker_resolver_instance: TickerResolver | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global sec_client_instance
+    global sec_client_instance, ticker_resolver_instance
     logger.info("Initializing SECClient instance...")
     sec_client_instance = SECClient()
+    ticker_resolver_instance = TickerResolver(sec_client_instance)
     yield
     logger.info("Closing SECClient instance...")
     if sec_client_instance:
@@ -86,6 +89,24 @@ def serialize_pipeline_result(res: PipelineResult) -> dict[str, Any]:
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "Filing Sleuth API", "version": "1.0.0"}
+
+
+@app.get("/api/companies")
+async def search_companies(q: str = "", limit: int = 8):
+    """Autocomplete search over SEC public companies by ticker or name."""
+    global sec_client_instance, ticker_resolver_instance
+    if not sec_client_instance:
+        sec_client_instance = SECClient()
+    if not ticker_resolver_instance:
+        ticker_resolver_instance = TickerResolver(sec_client_instance)
+
+    try:
+        results = await ticker_resolver_instance.search_companies(q, limit=limit)
+        return {"companies": results}
+    except Exception as e:
+        logger.error("Error searching companies: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.get("/api/benchmark")

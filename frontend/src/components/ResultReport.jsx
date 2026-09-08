@@ -10,6 +10,8 @@ import {
   Quote,
   CheckCircle2,
 } from 'lucide-react';
+import FinancialChart from './FinancialChart';
+import ExportToolbar from './ExportToolbar';
 
 export default function ResultReport({ result, onSelectCitation }) {
   if (!result) return null;
@@ -74,21 +76,46 @@ export default function ResultReport({ result, onSelectCitation }) {
 
   return (
     <div className="results-container">
-      {/* 1. Executive Summary */}
+      {/* 0. Print Letterhead (Only visible during window.print) */}
+      <div className="print-only-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f766e', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
+          <div>
+            <h1 style={{ fontSize: '1.6rem', color: '#0f172a', fontWeight: 800 }}>FILING SLEUTH</h1>
+            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Forensic SEC EDGAR Intelligence Memo</div>
+          </div>
+          <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#64748b' }}>
+            <div>Date: {new Date().toLocaleDateString()}</div>
+            <div>Status: Grounded XBRL & Verified Citations</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 1. Executive Summary & Export Toolbar */}
       <div className="glass-panel summary-card">
-        <div className="summary-title">
-          <FileText size={20} color="#0f766e" />
-          <span>Executive Briefing</span>
+        <div className="summary-title" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FileText size={20} color="#0f766e" />
+            <span>Executive Briefing</span>
+          </div>
           {all_quotes_verified && (
-            <span className="badge badge-verified" style={{ marginLeft: 'auto' }}>
+            <span className="badge badge-verified">
               <CheckCircle2 size={13} /> Zero Hallucination Verified
             </span>
           )}
+
+          {/* Export Actions Toolbar */}
+          <div style={{ marginLeft: 'auto' }}>
+            <ExportToolbar result={result} />
+          </div>
         </div>
         <p className="summary-text">
           {renderTextWithCitations(synthesis_report?.executive_summary || 'No summary generated.')}
         </p>
       </div>
+
+      {/* 2. Interactive Financial Visualization (Peer Comparison or Multi-Year Trend) */}
+      <FinancialChart result={result} />
+
 
       {/* 2. Calendar Mismatch Warning (if Apple Sept vs MSFT June etc.) */}
       {calendarWarnings.length > 0 && (
