@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BarChart3, TrendingUp, HelpCircle, Layers, Sparkles } from 'lucide-react';
+import TiltCard from './TiltCard';
 
 export default function FinancialChart({ result }) {
   if (!result) return null;
@@ -34,7 +35,8 @@ export default function FinancialChart({ result }) {
   };
 
   return (
-    <div className="financial-chart-card">
+    <TiltCard className="financial-chart-card" maxTilt={3} scale={1.008}>
+
       <div className="chart-header">
         <div className="chart-title-group">
           <div className="chart-badge">
@@ -253,6 +255,7 @@ export default function FinancialChart({ result }) {
           })()}
         </div>
       )}
-    </div>
+    </TiltCard>
   );
 }
+

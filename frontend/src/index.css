@@ -330,23 +330,30 @@ h1, h2, h3, h4 {
   color: #334155;
   font-size: 0.8rem;
   font-weight: 600;
-  padding: 0.45rem 0.85rem;
-  border-radius: 8px;
+  padding: 0.48rem 0.9rem;
+  border-radius: 9px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
   text-align: left;
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  position: relative;
+  transform: perspective(600px) translateZ(0);
 }
 
 .benchmark-chip:hover {
   background: #f0fdfa;
   border-color: #99f6e4;
   color: #115e59;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(15, 118, 110, 0.12);
+  transform: perspective(600px) translateZ(6px) translateY(-2px);
+  box-shadow: 0 6px 16px -2px rgba(15, 118, 110, 0.18), inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.benchmark-chip:active {
+  transform: perspective(600px) translateZ(1px) translateY(0);
+  box-shadow: 0 1px 3px rgba(15, 118, 110, 0.2);
 }
 
 /* Reasoning Trace Section */
@@ -1581,5 +1588,153 @@ h1, h2, h3, h4 {
     border: 1px solid #94a3b8 !important;
   }
 }
+
+/* ==========================================================================
+   3D Physics, Tactile Tilt & Specular Lighting
+   ========================================================================== */
+.tilt-card-3d {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.tilt-glare-overlay {
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Volumetric 3D Enhancement on Comparison Bars */
+.bar-track-col {
+  background: #f1f5f9;
+  border-radius: 8px;
+  height: 30px;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.08);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.85rem;
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.12) 100%), var(--accent-primary);
+  box-shadow: 0 3px 8px rgba(15, 118, 110, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* ==========================================================================
+   3D Isometric Pipeline Stack (About Section)
+   ========================================================================== */
+.iso-pipeline-viewport {
+  background: linear-gradient(135deg, #091a1e 0%, #062b30 45%, #041f24 100%);
+  border-radius: 18px;
+  padding: 2.2rem 2rem;
+  border: 1px solid rgba(45, 212, 191, 0.25);
+  box-shadow: 0 16px 36px -4px rgba(4, 31, 36, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  perspective: 1100px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.iso-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #99f6e4;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.75rem;
+}
+
+.iso-stack-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 620px;
+  margin: 0 auto;
+  transform: rotateX(24deg) rotateY(-8deg) rotateZ(1deg);
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.iso-stack-container:hover {
+  transform: rotateX(18deg) rotateY(-4deg) rotateZ(0deg);
+}
+
+.iso-slab {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(153, 246, 228, 0.22);
+  border-radius: 12px;
+  padding: 0.95rem 1.35rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.iso-slab:hover,
+.iso-slab.active {
+  background: rgba(15, 118, 110, 0.42);
+  border-color: #5eead4;
+  transform: translateZ(32px) translateY(-8px);
+  box-shadow: 0 20px 35px -5px rgba(15, 118, 110, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.iso-slab-content {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.iso-slab-num {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #2dd4bf;
+  text-shadow: 0 0 12px rgba(45, 212, 191, 0.5);
+}
+
+.iso-slab-title {
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: #f8fafc;
+  flex: 1;
+  letter-spacing: -0.01em;
+}
+
+.iso-slab-badge {
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  background: rgba(45, 212, 191, 0.15);
+  color: #5eead4;
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  padding: 0.22rem 0.65rem;
+  border-radius: 6px;
+}
+
+.iso-inspector-callout {
+  margin-top: 1.75rem;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 1.1rem 1.4rem;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(8px);
+}
+
 
 

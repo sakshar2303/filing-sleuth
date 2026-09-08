@@ -15,9 +15,44 @@ import {
   HelpCircle,
   ExternalLink
 } from 'lucide-react';
+import TiltCard from './TiltCard';
 
 export default function AboutSection({ onSelectBenchmark, onClose }) {
   const [activeTab, setActiveTab] = useState('why'); // 'why' | 'pipeline' | 'usage' | 'benchmark'
+  const [hoveredSlab, setHoveredSlab] = useState(null);
+
+  const pipelineLayers = [
+    {
+      id: 'ingestion',
+      title: 'EDGAR Ingestion & CIK Resolution',
+      badge: 'SEC REST API',
+      desc: 'Resolves tickers to SEC CIKs, downloads raw 10-K filings, pulls structured XBRL facts, and caches locally.',
+    },
+    {
+      id: 'parsing',
+      title: 'Structure-Aware 10-K Parser',
+      badge: 'Geometry & Items',
+      desc: 'Cleans HTML, preserves table grid geometry, filters ToC resets, suppresses headers, and maps Items 1, 1A, 7, 8.',
+    },
+    {
+      id: 'retrieval',
+      title: 'Reciprocal Rank Fusion (RRF)',
+      badge: 'Dense + Sparse Hybrid',
+      desc: 'Combines ChromaDB vector embeddings with Okapi BM25 keyword matching via RRF score fusion: 1 / (60 + rank).',
+    },
+    {
+      id: 'extraction',
+      title: 'Extraction & Fuzzy Quote Verifier',
+      badge: '>85% Levenshtein',
+      desc: 'Directs quantitative queries to XBRL and audits qualitative quotes against raw chunk text using a sliding window.',
+    },
+    {
+      id: 'synthesis',
+      title: 'Cross-Company Alignment & Synthesis',
+      badge: 'Fiscal Sync & Math',
+      desc: 'Detects fiscal year-end mismatches, calculates deterministic ratios and spreads in Python, and links provenance footnotes.',
+    },
+  ];
 
   return (
     <div className="about-container">
@@ -70,7 +105,7 @@ export default function AboutSection({ onSelectBenchmark, onClose }) {
       {activeTab === 'why' && (
         <div className="about-content-fade">
           <div className="comparison-grid">
-            <div className="comparison-card flawed">
+            <TiltCard className="comparison-card flawed" maxTilt={4} scale={1.01}>
               <div className="comparison-card-header">
                 <AlertTriangle size={20} color="#e11d48" />
                 <h3>The Problem with General LLMs</h3>
@@ -93,9 +128,9 @@ export default function AboutSection({ onSelectBenchmark, onClose }) {
                   and arithmetic mistakes into margin, growth, and spread calculations.
                 </li>
               </ul>
-            </div>
+            </TiltCard>
 
-            <div className="comparison-card sleuth">
+            <TiltCard className="comparison-card sleuth" maxTilt={4} scale={1.01}>
               <div className="comparison-card-header">
                 <CheckCircle2 size={20} color="#0f766e" />
                 <h3>The Filing Sleuth Standard</h3>
@@ -118,11 +153,11 @@ export default function AboutSection({ onSelectBenchmark, onClose }) {
                   are calculated using deterministic Python code, never stochastic model generation.
                 </li>
               </ul>
-            </div>
+            </TiltCard>
           </div>
 
           <div className="feature-cards-grid">
-            <div className="feature-card">
+            <TiltCard className="feature-card" maxTilt={5} scale={1.02}>
               <div className="feature-icon-wrapper" style={{ background: '#ecfdf5', color: '#059669' }}>
                 <Database size={22} />
               </div>
@@ -131,9 +166,9 @@ export default function AboutSection({ onSelectBenchmark, onClose }) {
                 Fetches raw 10-K/10-Q submissions and XBRL facts directly from SEC EDGAR with strict User-Agent rate limiting
                 and resilient local disk caching.
               </p>
-            </div>
+            </TiltCard>
 
-            <div className="feature-card">
+            <TiltCard className="feature-card" maxTilt={5} scale={1.02}>
               <div className="feature-icon-wrapper" style={{ background: '#f0f9ff', color: '#0284c7' }}>
                 <Layers size={22} />
               </div>
@@ -142,9 +177,9 @@ export default function AboutSection({ onSelectBenchmark, onClose }) {
                 Cleans HTML while preserving table schemas, detects Table of Contents resets, suppresses running headers,
                 and isolates canonical 10-K items (Item 1, 1A, 7, 8).
               </p>
-            </div>
+            </TiltCard>
 
-            <div className="feature-card">
+            <TiltCard className="feature-card" maxTilt={5} scale={1.02}>
               <div className="feature-icon-wrapper" style={{ background: '#f0fdfa', color: '#0f766e' }}>
                 <ShieldCheck size={22} />
               </div>
@@ -153,7 +188,7 @@ export default function AboutSection({ onSelectBenchmark, onClose }) {
                 Every finding is tied to an SEC Accession Number, Item boundary, and character offset. Click any citation
                 to inspect the verbatim source chunk.
               </p>
-            </div>
+            </TiltCard>
           </div>
         </div>
       )}
@@ -161,8 +196,52 @@ export default function AboutSection({ onSelectBenchmark, onClose }) {
       {/* TAB 2: HOW IT WORKS (5 STAGES) */}
       {activeTab === 'pipeline' && (
         <div className="about-content-fade">
-          <div className="pipeline-steps-wrapper">
+          {/* Interactive 3D Isometric Pipeline Stack */}
+          <div className="iso-pipeline-viewport">
+            <div className="iso-header">
+              <Sparkles size={16} color="var(--accent-primary)" />
+              <span>Interactive 3D Layer Stack (Hover to inspect layer)</span>
+            </div>
+
+            <div className="iso-stack-container">
+              {pipelineLayers.map((layer, index) => (
+                <div
+                  key={layer.id}
+                  className={`iso-slab iso-slab-${index + 1} ${hoveredSlab === index ? 'active' : ''}`}
+                  onMouseEnter={() => setHoveredSlab(index)}
+                  onMouseLeave={() => setHoveredSlab(null)}
+                >
+                  <div className="iso-slab-content">
+                    <span className="iso-slab-num">0{index + 1}</span>
+                    <span className="iso-slab-title">{layer.title}</span>
+                    <span className="iso-slab-badge">{layer.badge}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Active Layer Inspector Callout */}
+            <div className="iso-inspector-callout">
+              {hoveredSlab !== null ? (
+                <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--accent-primary)', fontSize: '0.94rem' }}>
+                    Stage 0{hoveredSlab + 1}: {pipelineLayers[hoveredSlab].title}
+                  </div>
+                  <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                    {pipelineLayers[hoveredSlab].desc}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.86rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  Hover over any layer in the 3D isometric stack above to inspect its forensic architecture.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pipeline-steps-wrapper" style={{ marginTop: '2rem' }}>
             {/* Step 1 */}
+
             <div className="pipeline-step-item">
               <div className="pipeline-step-number">01</div>
               <div className="pipeline-step-content">
