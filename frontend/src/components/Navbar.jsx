@@ -1,10 +1,10 @@
 import React from 'react';
-import { ShieldCheck, Activity, Database, Sparkles } from 'lucide-react';
+import { ShieldCheck, Activity, Database, Sparkles, BookOpen, Compass, Search } from 'lucide-react';
 
-export default function Navbar({ isStreamingActive, serverHealthy }) {
+export default function Navbar({ isStreamingActive, serverHealthy, activeView, setActiveView }) {
   return (
     <header className="header-nav">
-      <div className="brand-badge">
+      <div className="brand-badge" onClick={() => setActiveView && setActiveView('workspace')} style={{ cursor: 'pointer' }}>
         <div className="logo-glow">
           <Sparkles size={20} color="#ffffff" />
         </div>
@@ -12,6 +12,24 @@ export default function Navbar({ isStreamingActive, serverHealthy }) {
           <span className="brand-title">FILING SLEUTH</span>
         </div>
         <span className="version-pill">SEC EDGAR AI AGENT</span>
+      </div>
+
+      {/* Navigation View Switcher */}
+      <div className="nav-tab-switcher">
+        <button
+          className={`nav-tab-btn ${activeView === 'workspace' ? 'active' : ''}`}
+          onClick={() => setActiveView('workspace')}
+        >
+          <Search size={14} />
+          <span>Research Workspace</span>
+        </button>
+        <button
+          className={`nav-tab-btn ${activeView === 'about' ? 'active' : ''}`}
+          onClick={() => setActiveView('about')}
+        >
+          <BookOpen size={14} />
+          <span>About & Methodology</span>
+        </button>
       </div>
 
       <div className="status-indicators">
@@ -31,3 +49,4 @@ export default function Navbar({ isStreamingActive, serverHealthy }) {
     </header>
   );
 }
+

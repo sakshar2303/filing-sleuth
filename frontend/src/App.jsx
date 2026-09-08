@@ -5,12 +5,14 @@ import BenchmarkPills from './components/BenchmarkPills';
 import ReasoningTrace from './components/ReasoningTrace';
 import ResultReport from './components/ResultReport';
 import CitationModal from './components/CitationModal';
-import { AlertCircle, FileSearch, Sparkles } from 'lucide-react';
+import AboutSection from './components/AboutSection';
+import { AlertCircle, FileSearch, Sparkles, BookOpen, ArrowRight } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 const WS_BASE = 'ws://localhost:8000/ws/query';
 
 export default function App() {
+  const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'about'
   const [currentQuery, setCurrentQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
@@ -19,6 +21,7 @@ export default function App() {
   const [selectedCitation, setSelectedCitation] = useState(null);
   const [error, setError] = useState(null);
   const [serverHealthy, setServerHealthy] = useState(false);
+
 
   // Check backend server health
   useEffect(() => {
@@ -119,80 +122,132 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <Navbar isStreamingActive={isLiveStreaming} serverHealthy={serverHealthy} />
+      <Navbar
+        isStreamingActive={isLiveStreaming}
+        serverHealthy={serverHealthy}
+        activeView={activeView}
+        setActiveView={setActiveView}
+      />
 
       <main className="main-container">
-        <section className="hero-section">
-          <h1 className="hero-headline">Forensic SEC EDGAR Intelligence</h1>
-          <p className="hero-subhead">
-            Cross-reference 10-K disclosures, verify XBRL numeric ground truth, calculate deterministic ratios,
-            and inspect verbatim quotations with guaranteed zero-hallucination provenance.
-          </p>
-
-          <QueryInput
-            currentQuery={currentQuery}
-            setQuery={setCurrentQuery}
-            onSubmit={handleRunQuery}
-            isLoading={isLoading}
-          />
-
-          <BenchmarkPills
-            onSelectQuery={(q) => {
+        {activeView === 'about' ? (
+          <AboutSection
+            onSelectBenchmark={(q) => {
+              setActiveView('workspace');
               setCurrentQuery(q);
               handleRunQuery(q);
             }}
-            disabled={isLoading}
+            onClose={() => setActiveView('workspace')}
           />
-        </section>
+        ) : (
+          <>
+            <section className="hero-section">
+              <h1 className="hero-headline">Forensic SEC EDGAR Intelligence</h1>
+              <p className="hero-subhead">
+                Cross-reference 10-K disclosures, verify XBRL numeric ground truth, calculate deterministic ratios,
+                and inspect verbatim quotations with guaranteed zero-hallucination provenance.
+              </p>
 
-        {/* Error state */}
-        {error && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              background: 'var(--rose-bg)',
-              border: '1px solid var(--rose-border)',
-              borderRadius: '10px',
-              padding: '1rem 1.5rem',
-              color: 'var(--rose-text)',
-              marginBottom: '2rem',
-            }}
-          >
-            <AlertCircle size={20} color="#e11d48" />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Research Pipeline Error</div>
-              <div style={{ fontSize: '0.85rem' }}>{error}</div>
-            </div>
-          </div>
-        )}
+              {/* Quick Guide Trigger Pill */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('about')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    color: 'var(--accent-primary)',
+                    background: 'var(--accent-light)',
+                    border: '1px solid var(--teal-border)',
+                    padding: '0.35rem 0.9rem',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#e6fffa';
+                    e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'var(--accent-light)';
+                    e.currentTarget.style.borderColor = 'var(--teal-border)';
+                  }}
+                >
+                  <BookOpen size={14} />
+                  <span>How Filing Sleuth works & how to use it effectively</span>
+                  <ArrowRight size={13} />
+                </button>
+              </div>
 
-        {/* Agent Reasoning Trace */}
-        <ReasoningTrace trace={trace} isLive={isLiveStreaming} />
+              <QueryInput
+                currentQuery={currentQuery}
+                setQuery={setCurrentQuery}
+                onSubmit={handleRunQuery}
+                isLoading={isLoading}
+              />
 
-        {/* Synthesis Results & Citations */}
-        {result ? (
-          <ResultReport
-            result={result}
-            onSelectCitation={(cit) => setSelectedCitation(cit)}
-          />
-        ) : !isLoading && !error && (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '3rem 1rem',
-              color: 'var(--text-muted)',
-              border: '1px dashed var(--border-medium)',
-              borderRadius: '14px',
-              background: '#ffffff',
-            }}
-          >
-            <FileSearch size={40} color="#94a3b8" style={{ margin: '0 auto 1rem' }} />
-            <p style={{ fontSize: '0.95rem' }}>
-              Select a benchmark question above or type an analyst query to initiate research.
-            </p>
-          </div>
+              <BenchmarkPills
+                onSelectQuery={(q) => {
+                  setCurrentQuery(q);
+                  handleRunQuery(q);
+                }}
+                disabled={isLoading}
+              />
+            </section>
+
+            {/* Error state */}
+            {error && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  background: 'var(--rose-bg)',
+                  border: '1px solid var(--rose-border)',
+                  borderRadius: '10px',
+                  padding: '1rem 1.5rem',
+                  color: 'var(--rose-text)',
+                  marginBottom: '2rem',
+                }}
+              >
+                <AlertCircle size={20} color="#e11d48" />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Research Pipeline Error</div>
+                  <div style={{ fontSize: '0.85rem' }}>{error}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Agent Reasoning Trace */}
+            <ReasoningTrace trace={trace} isLive={isLiveStreaming} />
+
+            {/* Synthesis Results & Citations */}
+            {result ? (
+              <ResultReport
+                result={result}
+                onSelectCitation={(cit) => setSelectedCitation(cit)}
+              />
+            ) : !isLoading && !error && (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '3rem 1rem',
+                  color: 'var(--text-muted)',
+                  border: '1px dashed var(--border-medium)',
+                  borderRadius: '14px',
+                  background: '#ffffff',
+                }}
+              >
+                <FileSearch size={40} color="#94a3b8" style={{ margin: '0 auto 1rem' }} />
+                <p style={{ fontSize: '0.95rem' }}>
+                  Select a benchmark question above or type an analyst query to initiate research.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -203,4 +258,5 @@ export default function App() {
       />
     </div>
   );
+
 }
