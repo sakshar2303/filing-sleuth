@@ -1,0 +1,206 @@
+import React, { useState, useEffect, useRef } from 'react';
+import Navbar from './components/Navbar';
+import QueryInput from './components/QueryInput';
+import BenchmarkPills from './components/BenchmarkPills';
+import ReasoningTrace from './components/ReasoningTrace';
+import ResultReport from './components/ResultReport';
+import CitationModal from './components/CitationModal';
+import { AlertCircle, FileSearch, Sparkles } from 'lucide-react';
+
+const API_BASE = 'http://localhost:8000';
+const WS_BASE = 'ws://localhost:8000/ws/query';
+
+export default function App() {
+  const [currentQuery, setCurrentQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLiveStreaming, setIsLiveStreaming] = useState(false);
+  const [trace, setTrace] = useState([]);
+  const [result, setResult] = useState(null);
+  const [selectedCitation, setSelectedCitation] = useState(null);
+  const [error, setError] = useState(null);
+  const [serverHealthy, setServerHealthy] = useState(false);
+
+  // Check backend server health
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        if (res.ok) setServerHealthy(true);
+      } catch (err) {
+        setServerHealthy(false);
+      }
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleRunQuery = async (queryText) => {
+    if (!queryText.trim() || isLoading) return;
+
+    setCurrentQuery(queryText);
+    setIsLoading(true);
+    setError(null);
+    setTrace([]);
+    setResult(null);
+
+    // Try WebSocket streaming first for real-time trace experience
+    try {
+      const ws = new WebSocket(WS_BASE);
+      let receivedResult = false;
+
+      ws.onopen = () => {
+        setIsLiveStreaming(true);
+        ws.send(JSON.stringify({ question: queryText }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'trace') {
+            setTrace((prev) => [...prev, msg]);
+          } else if (msg.type === 'result') {
+            receivedResult = true;
+            setResult(msg.data);
+            setIsLoading(false);
+            setIsLiveStreaming(false);
+            ws.close();
+          } else if (msg.type === 'error') {
+            setError(msg.message || 'Pipeline execution failed.');
+            setIsLoading(false);
+            setIsLiveStreaming(false);
+            ws.close();
+          }
+        } catch (e) {
+          console.error('WS parse error:', e);
+        }
+      };
+
+      ws.onerror = async () => {
+        console.warn('WebSocket failed, falling back to REST endpoint...');
+        if (!receivedResult) {
+          await executeViaRest(queryText);
+        }
+      };
+
+      ws.onclose = () => {
+        setIsLiveStreaming(false);
+      };
+
+    } catch (wsErr) {
+      console.warn('WebSocket connection error, using REST fallback:', wsErr);
+      await executeViaRest(queryText);
+    }
+  };
+
+  const executeViaRest = async (queryText) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: queryText }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setTrace(data.trace || []);
+      setResult(data);
+    } catch (err) {
+      setError(err.message || 'Failed to communicate with research backend.');
+    } finally {
+      setIsLoading(false);
+      setIsLiveStreaming(false);
+    }
+  };
+
+  return (
+    <div className="app-layout">
+      <Navbar isStreamingActive={isLiveStreaming} serverHealthy={serverHealthy} />
+
+      <main className="main-container">
+        <section className="hero-section">
+          <h1 className="hero-headline">Forensic SEC EDGAR Intelligence</h1>
+          <p className="hero-subhead">
+            Cross-reference 10-K disclosures, verify XBRL numeric ground truth, calculate deterministic ratios,
+            and inspect verbatim quotations with guaranteed zero-hallucination provenance.
+          </p>
+
+          <QueryInput
+            currentQuery={currentQuery}
+            setQuery={setCurrentQuery}
+            onSubmit={handleRunQuery}
+            isLoading={isLoading}
+          />
+
+          <BenchmarkPills
+            onSelectQuery={(q) => {
+              setCurrentQuery(q);
+              handleRunQuery(q);
+            }}
+            disabled={isLoading}
+          />
+        </section>
+
+        {/* Error state */}
+        {error && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              background: 'var(--rose-bg)',
+              border: '1px solid var(--rose-border)',
+              borderRadius: '10px',
+              padding: '1rem 1.5rem',
+              color: 'var(--rose-text)',
+              marginBottom: '2rem',
+            }}
+          >
+            <AlertCircle size={20} color="#e11d48" />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Research Pipeline Error</div>
+              <div style={{ fontSize: '0.85rem' }}>{error}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Agent Reasoning Trace */}
+        <ReasoningTrace trace={trace} isLive={isLiveStreaming} />
+
+        {/* Synthesis Results & Citations */}
+        {result ? (
+          <ResultReport
+            result={result}
+            onSelectCitation={(cit) => setSelectedCitation(cit)}
+          />
+        ) : !isLoading && !error && (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '3rem 1rem',
+              color: 'var(--text-muted)',
+              border: '1px dashed var(--border-medium)',
+              borderRadius: '14px',
+              background: '#ffffff',
+            }}
+          >
+            <FileSearch size={40} color="#94a3b8" style={{ margin: '0 auto 1rem' }} />
+            <p style={{ fontSize: '0.95rem' }}>
+              Select a benchmark question above or type an analyst query to initiate research.
+            </p>
+          </div>
+        )}
+      </main>
+
+      {/* Citation Modal Drawer */}
+      <CitationModal
+        citation={selectedCitation}
+        onClose={() => setSelectedCitation(null)}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,151 @@
+{
+  "total_questions": 20,
+  "passed_questions": 20,
+  "accuracy_rate": 100.0,
+  "citation_precision": 100.0,
+  "quote_faithfulness": 100.0,
+  "hallucination_rate": 0.0,
+  "non_disclosure_precision": 100.0,
+  "details": [
+    {
+      "id": "q01",
+      "question": "What was Apple's total revenue for fiscal year 2025?",
+      "category": "QUANTITATIVE_SINGLE",
+      "passed": true,
+      "notes": "Matched ground truth value 416,161,000,000 (got 416,161,000,000 via us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax)."
+    },
+    {
+      "id": "q02",
+      "question": "What was Apple's R&D expense for fiscal year 2025?",
+      "category": "QUANTITATIVE_SINGLE",
+      "passed": true,
+      "notes": "Matched ground truth value 34,550,000,000 (got 34,550,000,000 via us-gaap:ResearchAndDevelopmentExpense)."
+    },
+    {
+      "id": "q03",
+      "question": "What was Apple's R&D expense for fiscal year 2024?",
+      "category": "QUANTITATIVE_TREND",
+      "passed": true,
+      "notes": "Matched ground truth value 31,370,000,000 (got 31,370,000,000 via us-gaap:ResearchAndDevelopmentExpense)."
+    },
+    {
+      "id": "q04",
+      "question": "What was Microsoft's total revenue for fiscal year 2026?",
+      "category": "QUANTITATIVE_SINGLE",
+      "passed": true,
+      "notes": "Matched ground truth value 331,839,000,000 (got 331,839,000,000 via us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax)."
+    },
+    {
+      "id": "q05",
+      "question": "What was Microsoft's R&D expense for fiscal year 2026?",
+      "category": "QUANTITATIVE_SINGLE",
+      "passed": true,
+      "notes": "Matched ground truth value 35,562,000,000 (got 35,562,000,000 via us-gaap:ResearchAndDevelopmentExpense)."
+    },
+    {
+      "id": "q06",
+      "question": "What was Microsoft's revenue for fiscal year 2025?",
+      "category": "QUANTITATIVE_TREND",
+      "passed": true,
+      "notes": "Matched ground truth value 281,724,000,000 (got 281,724,000,000 via us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax)."
+    },
+    {
+      "id": "q07",
+      "question": "What was Apple's R&D expense as a percentage of revenue in FY2025?",
+      "category": "RATIO_COMPUTATION",
+      "passed": true,
+      "notes": "Computed ratio 8.30% (expected ~8.3%)."
+    },
+    {
+      "id": "q08",
+      "question": "What was Apple's R&D expense as a percentage of revenue in FY2024?",
+      "category": "RATIO_COMPUTATION",
+      "passed": true,
+      "notes": "Computed ratio 8.02% (expected ~8.02%)."
+    },
+    {
+      "id": "q09",
+      "question": "What was Microsoft's R&D expense as a percentage of revenue in FY2026?",
+      "category": "RATIO_COMPUTATION",
+      "passed": true,
+      "notes": "Computed ratio 10.72% (expected ~10.72%)."
+    },
+    {
+      "id": "q10",
+      "question": "What was Microsoft's R&D expense as a percentage of revenue in FY2025?",
+      "category": "RATIO_COMPUTATION",
+      "passed": true,
+      "notes": "Computed ratio 11.53% (expected ~11.53%)."
+    },
+    {
+      "id": "q11",
+      "question": "What cybersecurity risk management and governance did Microsoft disclose?",
+      "category": "QUALITATIVE_DISCLOSURE",
+      "passed": true,
+      "notes": "Disclosed in Item 1C with keywords verified."
+    },
+    {
+      "id": "q12",
+      "question": "What legal proceedings regarding the Digital Markets Act did Apple disclose?",
+      "category": "QUALITATIVE_DISCLOSURE",
+      "passed": true,
+      "notes": "Disclosed in Item 3 with keywords verified."
+    },
+    {
+      "id": "q13",
+      "question": "What Full Self-Driving and AI products did Tesla highlight in Item 1?",
+      "category": "QUALITATIVE_DISCLOSURE",
+      "passed": true,
+      "notes": "Disclosed in Item 1 with keywords verified."
+    },
+    {
+      "id": "q14",
+      "question": "What cloud growth and Intelligent Cloud server metrics did Microsoft discuss in MD&A?",
+      "category": "QUALITATIVE_DISCLOSURE",
+      "passed": true,
+      "notes": "Disclosed in Item 7 with keywords verified."
+    },
+    {
+      "id": "q15",
+      "question": "Compare R&D spend as % of revenue between Apple and Microsoft over the last 2 years.",
+      "category": "COMPARATIVE_TREND",
+      "passed": true,
+      "notes": "Successfully synthesized comparative matrix and notes."
+    },
+    {
+      "id": "q16",
+      "question": "What was Apple's R&D spend broken down specifically for the Apple Vision Pro product line?",
+      "category": "NON_DISCLOSURE_NEGATIVE",
+      "passed": true,
+      "notes": "Correctly recognized non-disclosure without hallucinating."
+    },
+    {
+      "id": "q17",
+      "question": "What was Tesla's total cryptocurrency mining revenue in fiscal year 2025?",
+      "category": "NON_DISCLOSURE_NEGATIVE",
+      "passed": true,
+      "notes": "Correctly recognized non-disclosure without hallucinating."
+    },
+    {
+      "id": "q18",
+      "question": "What was Microsoft's exact advertising spend on Super Bowl commercials in 2026?",
+      "category": "NON_DISCLOSURE_NEGATIVE",
+      "passed": true,
+      "notes": "Correctly recognized non-disclosure without hallucinating."
+    },
+    {
+      "id": "q19",
+      "question": "Why do Apple's and Microsoft's annual filings cover different calendar periods?",
+      "category": "EDGE_CASE_CALENDAR",
+      "passed": true,
+      "notes": "Successfully synthesized comparative matrix and notes."
+    },
+    {
+      "id": "q20",
+      "question": "What was Apple's Net Income for fiscal year 2025?",
+      "category": "QUANTITATIVE_SINGLE",
+      "passed": true,
+      "notes": "Matched ground truth value 112,010,000,000 (got 112,010,000,000 via us-gaap:NetIncomeLoss)."
+    }
+  ]
+}
