@@ -1,29 +1,19 @@
 import React from 'react';
 import { ShieldCheck, Activity, Database, Sparkles, BookOpen, Compass, Search, Home, Terminal, PanelLeft } from 'lucide-react';
 
-export default function Navbar({ isStreamingActive, serverHealthy, activeView, setActiveView, onToggleSidebar, isSidebarCollapsed }) {
+export default function Navbar({ isStreamingActive, serverHealthy, activeView, setActiveView }) {
   return (
     <header className="header-nav">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <button
-          type="button"
-          className="navbar-sidebar-toggle"
-          onClick={onToggleSidebar}
-          title={isSidebarCollapsed ? 'Open Sidebar (Cmd+B)' : 'Close Sidebar (Cmd+B)'}
-        >
-          <PanelLeft size={18} />
-        </button>
-
-        <div className="brand-badge" onClick={() => setActiveView && setActiveView('welcome')} style={{ cursor: 'pointer' }}>
-          <div className="logo-glow">
-            <Sparkles size={18} color="#ffffff" />
-          </div>
-          <div>
-            <span className="brand-title">FILING SLEUTH</span>
-          </div>
-          <span className="version-pill">SEC EDGAR</span>
+      <div className="brand-badge" onClick={() => setActiveView && setActiveView('welcome')} style={{ cursor: 'pointer' }}>
+        <div className="logo-glow">
+          <Sparkles size={18} color="#ffffff" />
         </div>
+        <div>
+          <span className="brand-title">FILING SLEUTH</span>
+        </div>
+        <span className="version-pill">SEC EDGAR</span>
       </div>
+
 
       {/* Navigation View Switcher */}
       <div className="nav-tab-switcher">

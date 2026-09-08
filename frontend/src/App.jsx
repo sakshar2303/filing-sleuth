@@ -223,9 +223,8 @@ export default function App() {
           serverHealthy={serverHealthy}
           activeView={activeView}
           setActiveView={setActiveView}
-          onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          isSidebarCollapsed={isSidebarCollapsed}
         />
+
 
         {/* Live Financial Ticker Ribbon */}
         <TickerTape
