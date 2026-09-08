@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
+import WelcomePage from './components/WelcomePage';
 import TickerTape from './components/TickerTape';
 import QueryInput from './components/QueryInput';
 import BenchmarkPills from './components/BenchmarkPills';
@@ -15,7 +17,8 @@ const API_BASE = 'http://localhost:8000';
 const WS_BASE = 'ws://localhost:8000/ws/query';
 
 export default function App() {
-  const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'about'
+  const [activeView, setActiveView] = useState('welcome'); // 'welcome' | 'workspace' | 'about'
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
@@ -25,6 +28,16 @@ export default function App() {
   const [error, setError] = useState(null);
   const [serverHealthy, setServerHealthy] = useState(false);
 
+  // History state with persistent local storage
+  const [history, setHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('filing_sleuth_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   // Dynamic ambient background glow coordinates
   const [mousePos, setMousePos] = useState({ x: 50, y: 25 });
   const handleMouseMove = (e) => {
@@ -33,7 +46,17 @@ export default function App() {
     setMousePos({ x, y });
   };
 
-
+  // Keyboard shortcut: Cmd+B / Ctrl+B to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setIsSidebarCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Check backend server health
   useEffect(() => {
@@ -50,9 +73,27 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const saveToHistory = (q, resData, traceData) => {
+    const newItem = {
+      id: Date.now().toString(),
+      question: q,
+      result: resData,
+      trace: traceData || [],
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setHistory((prev) => {
+      const updated = [newItem, ...prev.filter((item) => item.question !== q)].slice(0, 15);
+      try {
+        localStorage.setItem('filing_sleuth_history', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
   const handleRunQuery = async (queryText) => {
     if (!queryText.trim() || isLoading) return;
 
+    setActiveView('workspace');
     setCurrentQuery(queryText);
     setIsLoading(true);
     setError(null);
@@ -63,6 +104,7 @@ export default function App() {
     try {
       const ws = new WebSocket(WS_BASE);
       let receivedResult = false;
+      const accumulatedTrace = [];
 
       ws.onopen = () => {
         setIsLiveStreaming(true);
@@ -73,10 +115,12 @@ export default function App() {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'trace') {
+            accumulatedTrace.push(msg);
             setTrace((prev) => [...prev, msg]);
           } else if (msg.type === 'result') {
             receivedResult = true;
             setResult(msg.data);
+            saveToHistory(queryText, msg.data, accumulatedTrace);
             setIsLoading(false);
             setIsLiveStreaming(false);
             ws.close();
@@ -124,6 +168,7 @@ export default function App() {
       const data = await response.json();
       setTrace(data.trace || []);
       setResult(data);
+      saveToHistory(queryText, data, data.trace || []);
     } catch (err) {
       setError(err.message || 'Failed to communicate with research backend.');
     } finally {
@@ -134,153 +179,196 @@ export default function App() {
 
   return (
     <div
-      className="app-layout"
+      className="app-shell"
       onMouseMove={handleMouseMove}
       style={{
         '--mouse-x': `${mousePos.x}%`,
         '--mouse-y': `${mousePos.y}%`,
       }}
     >
-      <Navbar
-        isStreamingActive={isLiveStreaming}
-        serverHealthy={serverHealthy}
+      {/* Collapsible Analyst Sidebar */}
+      <Sidebar
         activeView={activeView}
         setActiveView={setActiveView}
-      />
-
-      {/* Live Financial Ticker Ribbon */}
-      <TickerTape
-        onSelectQuery={(q) => {
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+        history={history}
+        onSelectHistory={(item) => {
+          setCurrentQuery(item.question);
+          setResult(item.result);
+          setTrace(item.trace || []);
           setActiveView('workspace');
+        }}
+        onClearHistory={() => {
+          setHistory([]);
+          localStorage.removeItem('filing_sleuth_history');
+        }}
+        onNewQuery={() => {
+          setCurrentQuery('');
+          setResult(null);
+          setTrace([]);
+          setActiveView('workspace');
+        }}
+        onSelectTicker={(ticker, name) => {
+          const q = `What was ${name}'s (${ticker}) revenue, R&D spend, and net income for FY2023?`;
           setCurrentQuery(q);
           handleRunQuery(q);
         }}
-        disabled={isLoading}
       />
 
-      <main className="main-container">
-        {activeView === 'about' ? (
-          <AboutSection
-            onSelectBenchmark={(q) => {
-              setActiveView('workspace');
-              setCurrentQuery(q);
-              handleRunQuery(q);
-            }}
-            onClose={() => setActiveView('workspace')}
-          />
-        ) : (
-          <>
-            <section className="hero-section">
-              <h1 className="hero-headline">Forensic SEC EDGAR Intelligence</h1>
-              <p className="hero-subhead">
-                Cross-reference 10-K disclosures, verify XBRL numeric ground truth, calculate deterministic ratios,
-                and inspect verbatim quotations with guaranteed zero-hallucination provenance.
-              </p>
+      {/* Main App Content Area */}
+      <div className={`app-main-content ${isSidebarCollapsed ? 'sidebar-is-collapsed' : 'sidebar-is-expanded'}`}>
+        <Navbar
+          isStreamingActive={isLiveStreaming}
+          serverHealthy={serverHealthy}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          isSidebarCollapsed={isSidebarCollapsed}
+        />
 
-              {/* Quick Guide Trigger Pill */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setActiveView('about')}
+        {/* Live Financial Ticker Ribbon */}
+        <TickerTape
+          onSelectQuery={(q) => {
+            handleRunQuery(q);
+          }}
+          disabled={isLoading}
+        />
+
+        <main className="main-container">
+          {/* VIEW 1: WELCOME & PRODUCT TOUR */}
+          {activeView === 'welcome' && (
+            <WelcomePage
+              onOpenTerminal={() => setActiveView('workspace')}
+              onLaunchQuery={(q) => {
+                handleRunQuery(q);
+              }}
+              onOpenAbout={() => setActiveView('about')}
+            />
+          )}
+
+          {/* VIEW 2: ABOUT ARCHITECTURE & 3D STACK */}
+          {activeView === 'about' && (
+            <AboutSection
+              onSelectBenchmark={(q) => {
+                handleRunQuery(q);
+              }}
+              onClose={() => setActiveView('workspace')}
+            />
+          )}
+
+          {/* VIEW 3: RESEARCH WORKSPACE & TERMINAL */}
+          {activeView === 'workspace' && (
+            <>
+              <section className="hero-section">
+                <h1 className="hero-headline">Forensic SEC EDGAR Intelligence</h1>
+                <p className="hero-subhead">
+                  Cross-reference 10-K disclosures, verify XBRL numeric ground truth, calculate deterministic ratios,
+                  and inspect verbatim quotations with guaranteed zero-hallucination provenance.
+                </p>
+
+                {/* Quick Guide Trigger Pill */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveView('about')}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: 'var(--accent-primary)',
+                      background: 'var(--accent-light)',
+                      border: '1px solid var(--teal-border)',
+                      padding: '0.35rem 0.9rem',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = '#e6fffa';
+                      e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'var(--accent-light)';
+                      e.currentTarget.style.borderColor = 'var(--teal-border)';
+                    }}
+                  >
+                    <BookOpen size={14} />
+                    <span>How Filing Sleuth works & how to use it effectively</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+
+                <QueryInput
+                  currentQuery={currentQuery}
+                  setQuery={setCurrentQuery}
+                  onSubmit={handleRunQuery}
+                  isLoading={isLoading}
+                />
+
+                <BenchmarkPills
+                  onSelectQuery={(q) => {
+                    handleRunQuery(q);
+                  }}
+                  disabled={isLoading}
+                />
+              </section>
+
+              {/* Error state */}
+              {error && (
+                <div
                   style={{
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: '0.45rem',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    color: 'var(--accent-primary)',
-                    background: 'var(--accent-light)',
-                    border: '1px solid var(--teal-border)',
-                    padding: '0.35rem 0.9rem',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = '#e6fffa';
-                    e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'var(--accent-light)';
-                    e.currentTarget.style.borderColor = 'var(--teal-border)';
+                    gap: '0.75rem',
+                    background: 'var(--rose-bg)',
+                    border: '1px solid var(--rose-border)',
+                    borderRadius: '10px',
+                    padding: '1rem 1.5rem',
+                    color: 'var(--rose-text)',
+                    marginBottom: '2rem',
                   }}
                 >
-                  <BookOpen size={14} />
-                  <span>How Filing Sleuth works & how to use it effectively</span>
-                  <ArrowRight size={13} />
-                </button>
-              </div>
-
-              <QueryInput
-                currentQuery={currentQuery}
-                setQuery={setCurrentQuery}
-                onSubmit={handleRunQuery}
-                isLoading={isLoading}
-              />
-
-              <BenchmarkPills
-                onSelectQuery={(q) => {
-                  setCurrentQuery(q);
-                  handleRunQuery(q);
-                }}
-                disabled={isLoading}
-              />
-            </section>
-
-            {/* Error state */}
-            {error && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  background: 'var(--rose-bg)',
-                  border: '1px solid var(--rose-border)',
-                  borderRadius: '10px',
-                  padding: '1rem 1.5rem',
-                  color: 'var(--rose-text)',
-                  marginBottom: '2rem',
-                }}
-              >
-                <AlertCircle size={20} color="#e11d48" />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Research Pipeline Error</div>
-                  <div style={{ fontSize: '0.85rem' }}>{error}</div>
+                  <AlertCircle size={20} color="#e11d48" />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Research Pipeline Error</div>
+                    <div style={{ fontSize: '0.85rem' }}>{error}</div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Agent Reasoning Trace */}
-            <ReasoningTrace trace={trace} isLive={isLiveStreaming} />
+              {/* Agent Reasoning Trace */}
+              <ReasoningTrace trace={trace} isLive={isLiveStreaming} />
 
-            {/* Synthesis Results & Citations OR Rich Analyst Launchpad */}
-            {result ? (
-              <ResultReport
-                result={result}
-                onSelectCitation={(cit) => setSelectedCitation(cit)}
-              />
-            ) : !isLoading && !error && (
-              <AnalystLaunchpad
-                onSelectQuery={(q) => {
-                  setCurrentQuery(q);
-                  handleRunQuery(q);
-                }}
-                disabled={isLoading}
-              />
-            )}
-          </>
-        )}
-      </main>
+              {/* Synthesis Results & Citations OR Rich Analyst Launchpad */}
+              {result ? (
+                <ResultReport
+                  result={result}
+                  onSelectCitation={(cit) => setSelectedCitation(cit)}
+                />
+              ) : !isLoading && !error && (
+                <AnalystLaunchpad
+                  onSelectQuery={(q) => {
+                    handleRunQuery(q);
+                  }}
+                  disabled={isLoading}
+                />
+              )}
+            </>
+          )}
+        </main>
 
-      {/* Institutional Footer */}
-      <Footer onSwitchView={(view) => setActiveView(view)} />
+        {/* Institutional Footer */}
+        <Footer onSwitchView={(view) => setActiveView(view)} />
 
-      {/* Citation Modal Drawer */}
-      <CitationModal
-        citation={selectedCitation}
-        onClose={() => setSelectedCitation(null)}
-      />
+        {/* Citation Modal Drawer */}
+        <CitationModal
+          citation={selectedCitation}
+          onClose={() => setSelectedCitation(null)}
+        />
+      </div>
     </div>
   );
 }
-

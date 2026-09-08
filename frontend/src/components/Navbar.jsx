@@ -1,34 +1,52 @@
 import React from 'react';
-import { ShieldCheck, Activity, Database, Sparkles, BookOpen, Compass, Search } from 'lucide-react';
+import { ShieldCheck, Activity, Database, Sparkles, BookOpen, Compass, Search, Home, Terminal, PanelLeft } from 'lucide-react';
 
-export default function Navbar({ isStreamingActive, serverHealthy, activeView, setActiveView }) {
+export default function Navbar({ isStreamingActive, serverHealthy, activeView, setActiveView, onToggleSidebar, isSidebarCollapsed }) {
   return (
     <header className="header-nav">
-      <div className="brand-badge" onClick={() => setActiveView && setActiveView('workspace')} style={{ cursor: 'pointer' }}>
-        <div className="logo-glow">
-          <Sparkles size={20} color="#ffffff" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <button
+          type="button"
+          className="navbar-sidebar-toggle"
+          onClick={onToggleSidebar}
+          title={isSidebarCollapsed ? 'Open Sidebar (Cmd+B)' : 'Close Sidebar (Cmd+B)'}
+        >
+          <PanelLeft size={18} />
+        </button>
+
+        <div className="brand-badge" onClick={() => setActiveView && setActiveView('welcome')} style={{ cursor: 'pointer' }}>
+          <div className="logo-glow">
+            <Sparkles size={18} color="#ffffff" />
+          </div>
+          <div>
+            <span className="brand-title">FILING SLEUTH</span>
+          </div>
+          <span className="version-pill">SEC EDGAR</span>
         </div>
-        <div>
-          <span className="brand-title">FILING SLEUTH</span>
-        </div>
-        <span className="version-pill">SEC EDGAR AI AGENT</span>
       </div>
 
       {/* Navigation View Switcher */}
       <div className="nav-tab-switcher">
         <button
+          className={`nav-tab-btn ${activeView === 'welcome' ? 'active' : ''}`}
+          onClick={() => setActiveView('welcome')}
+        >
+          <Home size={14} />
+          <span>Tour</span>
+        </button>
+        <button
           className={`nav-tab-btn ${activeView === 'workspace' ? 'active' : ''}`}
           onClick={() => setActiveView('workspace')}
         >
-          <Search size={14} />
-          <span>Research Workspace</span>
+          <Terminal size={14} />
+          <span>Research Terminal</span>
         </button>
         <button
           className={`nav-tab-btn ${activeView === 'about' ? 'active' : ''}`}
           onClick={() => setActiveView('about')}
         >
           <BookOpen size={14} />
-          <span>About & Methodology</span>
+          <span>Methodology & 3D</span>
         </button>
       </div>
 
@@ -49,4 +67,5 @@ export default function Navbar({ isStreamingActive, serverHealthy, activeView, s
     </header>
   );
 }
+
 
