@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ArrowRight, X, Building2, Sparkles, Database } from 'lucide-react';
+import { Search, ArrowRight, X, Building2, Sparkles, Database, Zap, ShieldAlert } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
-export default function QueryInput({ onSubmit, isLoading, currentQuery, setQuery }) {
+export default function QueryInput({ onSubmit, isLoading, currentQuery, setQuery, skepticMode, setSkepticMode }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSearchingCompanies, setIsSearchingCompanies] = useState(false);
@@ -89,12 +89,40 @@ export default function QueryInput({ onSubmit, isLoading, currentQuery, setQuery
 
   return (
     <div className="search-container" ref={wrapperRef} style={{ position: 'relative' }}>
-      <div className="search-bar-wrap">
-        <Search size={20} color="#0f766e" style={{ marginRight: '0.6rem', flexShrink: 0 }} />
+      {/* Mode Selector Ribbon */}
+      <div className="search-toolbar-ribbon">
+        <button
+          type="button"
+          className={`mode-toggle-chip ${!skepticMode ? 'active-standard' : ''}`}
+          onClick={() => setSkepticMode && setSkepticMode(false)}
+          title="Standard Audit Mode: Balanced institutional SEC fact extraction"
+        >
+          <Sparkles size={13} />
+          <span>Standard Audit</span>
+        </button>
+
+        <button
+          type="button"
+          className={`mode-toggle-chip ${skepticMode ? 'active-skeptic' : ''}`}
+          onClick={() => setSkepticMode && setSkepticMode(true)}
+          title="Forensic Skeptic Mode: Short-Seller lens hunting for accounting red flags, cash divergence, and footnote disclosures"
+        >
+          <Zap size={13} />
+          <span>Forensic Skeptic 🔍</span>
+          {skepticMode && <span className="skeptic-live-dot" />}
+        </button>
+      </div>
+
+      <div className={`search-bar-wrap ${skepticMode ? 'search-bar-skeptic' : ''}`}>
+        <Search size={20} color={skepticMode ? '#d97706' : '#0f766e'} style={{ marginRight: '0.6rem', flexShrink: 0 }} />
         <input
           type="text"
           className="search-input"
-          placeholder="Ask anything across Apple, Microsoft, Tesla 10-K filings (e.g. Compare R&D % of revenue)..."
+          placeholder={
+            skepticMode
+              ? "🔍 Forensic Skeptic Mode: Ask about cash vs accruals, DSO, footnote risks, or inventory build-ups..."
+              : "Ask anything across Apple, Microsoft, Tesla 10-K filings (e.g. Compare R&D % of revenue)..."
+          }
           value={currentQuery}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -123,7 +151,7 @@ export default function QueryInput({ onSubmit, isLoading, currentQuery, setQuery
         )}
         <button
           type="button"
-          className="search-btn"
+          className={`search-btn ${skepticMode ? 'search-btn-skeptic' : ''}`}
           onClick={() => {
             setShowDropdown(false);
             if (currentQuery.trim()) onSubmit(currentQuery.trim());

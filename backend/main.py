@@ -63,6 +63,7 @@ app.add_middleware(
 
 class QueryRequest(BaseModel):
     question: str
+    skeptic_mode: bool = False
 
 
 def serialize_pipeline_result(res: PipelineResult) -> dict[str, Any]:
@@ -72,6 +73,7 @@ def serialize_pipeline_result(res: PipelineResult) -> dict[str, Any]:
         "plan": res.plan.model_dump() if res.plan else None,
         "extracted_facts": [f.model_dump() for f in res.extracted_facts],
         "computations": res.computations,
+        "forensic_scorecard": res.forensic_scorecard,
         "synthesis_report": res.synthesis_report.model_dump() if res.synthesis_report else None,
         "trace": [
             {
@@ -83,6 +85,7 @@ def serialize_pipeline_result(res: PipelineResult) -> dict[str, Any]:
         ],
         "total_chunks_indexed": res.total_chunks_indexed,
         "all_quotes_verified": res.all_quotes_verified,
+        "skeptic_mode": res.skeptic_mode,
     }
 
 
@@ -134,7 +137,7 @@ async def execute_query(req: QueryRequest):
 
     try:
         orchestrator = Orchestrator(sec_client_instance)
-        result = await orchestrator.run(req.question)
+        result = await orchestrator.run(req.question, skeptic_mode=req.skeptic_mode)
         return serialize_pipeline_result(result)
     except Exception as e:
         logger.error("Error executing query: %s", e, exc_info=True)
@@ -154,6 +157,7 @@ async def websocket_query(websocket: WebSocket):
             data_str = await websocket.receive_text()
             data = json.loads(data_str)
             question = data.get("question", "").strip()
+            skeptic_mode = bool(data.get("skeptic_mode", False))
 
             if not question:
                 await websocket.send_json({"type": "error", "message": "Empty question received."})
@@ -168,7 +172,7 @@ async def websocket_query(websocket: WebSocket):
                 })
 
             orchestrator = Orchestrator(sec_client_instance)
-            result = await orchestrator.run(question, on_trace_step=stream_trace_step)
+            result = await orchestrator.run(question, on_trace_step=stream_trace_step, skeptic_mode=skeptic_mode)
 
             await websocket.send_json({
                 "type": "result",

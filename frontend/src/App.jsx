@@ -19,6 +19,7 @@ const WS_BASE = 'ws://localhost:8000/ws/query';
 export default function App() {
   const [activeView, setActiveView] = useState('welcome'); // 'welcome' | 'workspace' | 'about'
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [skepticMode, setSkepticMode] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
@@ -69,13 +70,14 @@ export default function App() {
       }
     };
     checkHealth();
-    const interval = setInterval(checkHealth, 8000);
+    const interval = setInterval(checkHealth, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const saveToHistory = (q, resData, traceData) => {
+    if (!q || !resData) return;
     const newItem = {
-      id: Date.now().toString(),
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       question: q,
       result: resData,
       trace: traceData || [],
@@ -90,8 +92,10 @@ export default function App() {
     });
   };
 
-  const handleRunQuery = async (queryText) => {
+  const handleRunQuery = async (queryText, forceSkeptic = null) => {
     if (!queryText.trim() || isLoading) return;
+
+    const isSkeptic = forceSkeptic !== null ? forceSkeptic : skepticMode;
 
     setActiveView('workspace');
     setCurrentQuery(queryText);
@@ -108,7 +112,7 @@ export default function App() {
 
       ws.onopen = () => {
         setIsLiveStreaming(true);
-        ws.send(JSON.stringify({ question: queryText }));
+        ws.send(JSON.stringify({ question: queryText, skeptic_mode: isSkeptic }));
       };
 
       ws.onmessage = (event) => {
@@ -138,7 +142,7 @@ export default function App() {
       ws.onerror = async () => {
         console.warn('WebSocket failed, falling back to REST endpoint...');
         if (!receivedResult) {
-          await executeViaRest(queryText);
+          await executeViaRest(queryText, isSkeptic);
         }
       };
 
@@ -148,16 +152,16 @@ export default function App() {
 
     } catch (wsErr) {
       console.warn('WebSocket connection error, using REST fallback:', wsErr);
-      await executeViaRest(queryText);
+      await executeViaRest(queryText, isSkeptic);
     }
   };
 
-  const executeViaRest = async (queryText) => {
+  const executeViaRest = async (queryText, isSkeptic = false) => {
     try {
       const response = await fetch(`${API_BASE}/api/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: queryText }),
+        body: JSON.stringify({ question: queryText, skeptic_mode: isSkeptic }),
       });
 
       if (!response.ok) {
@@ -305,6 +309,8 @@ export default function App() {
                   setQuery={setCurrentQuery}
                   onSubmit={handleRunQuery}
                   isLoading={isLoading}
+                  skepticMode={skepticMode}
+                  setSkepticMode={setSkepticMode}
                 />
 
                 <BenchmarkPills

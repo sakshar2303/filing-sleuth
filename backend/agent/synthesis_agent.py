@@ -72,6 +72,7 @@ class SynthesisAgent:
         question: str,
         plan: ExecutionPlan,
         facts: list[ExtractedFact],
+        skeptic_mode: bool = False,
     ) -> SynthesisReport:
         """Synthesize a complete research report from facts and plan."""
         # 1. Align facts and compute metrics
@@ -100,9 +101,9 @@ class SynthesisAgent:
 
         # 3. Generate structured report
         if self.llm_client.has_active_provider:
-            return await self._synthesize_llm(question, plan, facts, matrix, computations, citations)
+            return await self._synthesize_llm(question, plan, facts, matrix, computations, citations, skeptic_mode)
 
-        return self._synthesize_heuristic(question, plan, facts, matrix, computations, citations)
+        return self._synthesize_heuristic(question, plan, facts, matrix, computations, citations, skeptic_mode)
 
     async def _synthesize_llm(
         self,
@@ -112,6 +113,7 @@ class SynthesisAgent:
         matrix: AlignmentMatrix,
         computations: list[ComputedResult],
         citations: list[CitationEntry],
+        skeptic_mode: bool = False,
     ) -> SynthesisReport:
         """Generate synthesis report using LLM."""
         facts_summary = "\n".join(
@@ -125,8 +127,21 @@ class SynthesisAgent:
             for c in computations
         )
 
+        skeptic_instructions = ""
+        system_prompt = SYNTHESIS_SYSTEM_PROMPT
+        if skeptic_mode:
+            system_prompt += (
+                "\n\nFORENSIC SKEPTIC MODE IS ACTIVE:\n"
+                "You are acting as an investigative forensic auditor / short-seller. "
+                "Highlight aggressive revenue recognition, divergence between net income and operating cash flow, "
+                "unusual footnote adjustments, customer/supplier concentrations, and liquidity risks. "
+                "Explicitly point out any vulnerabilities in executive_summary and key_findings."
+            )
+            skeptic_instructions = "\n[MODE: FORENSIC SKEPTIC - Focus on accounting red flags, cash-flow quality gaps, and footnote risks]\n"
+
         prompt = (
             f"User Question: {question}\n\n"
+            f"{skeptic_instructions}"
             f"Extracted Facts:\n{facts_summary}\n\n"
             f"Calculated Derivations:\n{comp_summary}\n\n"
             f"Calendar Notes: {', '.join(matrix.calendar_warnings) if matrix.calendar_warnings else 'None'}\n\n"
@@ -135,7 +150,7 @@ class SynthesisAgent:
 
         report = await self.llm_client.generate(
             prompt=prompt,
-            system=SYNTHESIS_SYSTEM_PROMPT,
+            system=system_prompt,
             response_model=SynthesisReport,
             temperature=0.0,
         )
@@ -151,17 +166,22 @@ class SynthesisAgent:
         matrix: AlignmentMatrix,
         computations: list[ComputedResult],
         citations: list[CitationEntry],
+        skeptic_mode: bool = False,
     ) -> SynthesisReport:
         """Deterministic heuristic report builder for when no LLM API key is present."""
         # 1. Executive Summary
+        prefix = "[FORENSIC SKEPTIC AUDIT] " if skeptic_mode else ""
         if computations:
             comp_descs = " ".join(c.description for c in computations[:3])
-            exec_summary = f"Analysis for '{question}': {comp_descs}"
+            exec_summary = f"{prefix}Analysis for '{question}': {comp_descs}"
         elif facts:
             valid_claims = [f.claim for f in facts if f.claim]
-            exec_summary = f"Analysis for '{question}': " + " ".join(valid_claims[:3])
+            exec_summary = f"{prefix}Analysis for '{question}': " + " ".join(valid_claims[:3])
         else:
-            exec_summary = f"No disclosures found for '{question}' in the target filings."
+            exec_summary = f"{prefix}No disclosures found for '{question}' in the target filings."
+
+        if skeptic_mode:
+            exec_summary += " [Skeptic Lens: Operating cash flow, working capital trajectory, and footnote commitments should be reconciled against GAAP accruals.]"
 
         # 2. Markdown comparison table
         table_lines = []

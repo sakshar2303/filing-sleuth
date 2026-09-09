@@ -12,11 +12,12 @@ import {
 } from 'lucide-react';
 import FinancialChart from './FinancialChart';
 import ExportToolbar from './ExportToolbar';
+import ForensicRadar from './ForensicRadar';
 
 export default function ResultReport({ result, onSelectCitation }) {
   if (!result) return null;
 
-  const { synthesis_report, computations, plan, all_quotes_verified } = result;
+  const { synthesis_report, computations, plan, all_quotes_verified, forensic_scorecard, skeptic_mode } = result;
   const citations = synthesis_report?.citations || [];
   const calendarWarnings = (synthesis_report?.caveats_and_notes || []).filter(n =>
     n.toLowerCase().includes('calendar') || n.toLowerCase().includes('fiscal') || n.toLowerCase().includes('month') || n.toLowerCase().includes('mismatch')
@@ -115,6 +116,9 @@ export default function ResultReport({ result, onSelectCitation }) {
 
       {/* 2. Interactive Financial Visualization (Peer Comparison or Multi-Year Trend) */}
       <FinancialChart result={result} />
+
+      {/* 2b. Automated Forensic Red Flag Radar Scorecard */}
+      <ForensicRadar scorecard={forensic_scorecard} skepticMode={skeptic_mode} />
 
 
       {/* 2. Calendar Mismatch Warning (if Apple Sept vs MSFT June etc.) */}
