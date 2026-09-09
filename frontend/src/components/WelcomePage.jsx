@@ -13,9 +13,77 @@ import {
   BarChart3,
   TrendingUp,
   FileSearch,
-  ExternalLink
+  ExternalLink,
+  Users,
+  Briefcase,
+  Newspaper,
+  LineChart,
+  AlertTriangle
 } from 'lucide-react';
 import TiltCard from './TiltCard';
+
+const TARGET_AUDIENCES = [
+  {
+    id: 'equity-analysts',
+    title: 'Equity Research Analysts',
+    subtitle: 'Buy-Side & Sell-Side Investment Firms',
+    icon: <BarChart3 size={24} color="#0f766e" />,
+    badge: 'Buy-Side / Sell-Side',
+    painPoint: 'Drowning in 300+ page filings across 20+ sector peers; generic AI hallucinates numbers and makes arithmetic mistakes.',
+    howItHelps: 'Queries official SEC CompanyFacts XBRL directly. Calculates deterministic margins, growth rates, and peer basis-point spreads in Python.',
+    keyFeatures: ['XBRL Ground Truth', 'Fiscal Year Sync', 'Deterministic Math'],
+    exampleQuery: 'Compare R&D spend as % of revenue between Apple and Microsoft for FY2023',
+    gradient: 'linear-gradient(135deg, rgba(15, 118, 110, 0.07) 0%, rgba(2, 132, 199, 0.05) 100%)',
+  },
+  {
+    id: 'auditors',
+    title: 'Auditors & Forensic Accountants',
+    subtitle: 'Big 4 & Litigation Advisory',
+    icon: <ShieldCheck size={24} color="#059669" />,
+    badge: 'Audit & Compliance',
+    painPoint: 'Need cryptographic proof for claims; cannot risk non-verifiable quotes or untraced multi-period restatements.',
+    howItHelps: 'Audits every quoted sentence against raw 10-K HTML with a sliding window Levenshtein matcher (>85%). Cites exact Accession numbers and character offsets.',
+    keyFeatures: ['Sliding Window Quote Audit', 'Zero Hallucination Guarantee', 'Exact SEC Accessions'],
+    exampleQuery: 'What cybersecurity risk management and governance did Microsoft disclose in Item 1C?',
+    gradient: 'linear-gradient(135deg, rgba(5, 150, 105, 0.07) 0%, rgba(15, 118, 110, 0.05) 100%)',
+  },
+  {
+    id: 'journalists',
+    title: 'Financial Journalists & Columnists',
+    subtitle: 'WSJ, Bloomberg, FT & Investigative Media',
+    icon: <Newspaper size={24} color="#7c3aed" />,
+    badge: 'Financial Press',
+    painPoint: 'Racing against deadlines when 10-Ks drop to discover newly added risks without risking embarrassing public retractions.',
+    howItHelps: 'Instant semantic hybrid search across Item 1A (Risk Factors) and Item 3 (Legal Proceedings) with verbatim quotes ready to copy into articles.',
+    keyFeatures: ['Item Boundary Isolation', 'Verbatim Quotes', 'Fast Disclosure Discovery'],
+    exampleQuery: 'What legal proceedings regarding the Digital Markets Act did Apple disclose in Item 3?',
+    gradient: 'linear-gradient(135deg, rgba(124, 58, 237, 0.07) 0%, rgba(219, 39, 119, 0.05) 100%)',
+  },
+  {
+    id: 'corp-dev',
+    title: 'Corporate Strategy & M&A Teams',
+    subtitle: 'Private Equity & In-House Strategy',
+    icon: <Briefcase size={24} color="#0284c7" />,
+    badge: 'M&A & Corporate Dev',
+    painPoint: 'Benchmarking acquisition targets against peer cost structures, customer dependencies, and unaligned fiscal calendars.',
+    howItHelps: 'Builds cross-company comparison matrices, flags non-aligned fiscal year ends (e.g. Sept vs June), and computes basis point spreads.',
+    keyFeatures: ['Comparison Matrix', 'Calendar Mismatch Warnings', 'Peer Spread Models'],
+    exampleQuery: 'How has Tesla\'s automotive regulatory credits revenue trended over the last 3 fiscal years?',
+    gradient: 'linear-gradient(135deg, rgba(2, 132, 199, 0.07) 0%, rgba(99, 102, 241, 0.05) 100%)',
+  },
+  {
+    id: 'retail-investors',
+    title: 'Fundamental Investors & Family Offices',
+    subtitle: 'Deep-Value & Fundamental Allocators',
+    icon: <LineChart size={24} color="#d97706" />,
+    badge: 'Family Offices & Allocators',
+    painPoint: 'Cannot justify $25,000–$30,000/year per seat for Bloomberg or FactSet licenses just to cross-reference SEC filings.',
+    howItHelps: 'Provides institutional-grade financial forensic intelligence with direct SEC EDGAR API grounding completely open and accessible in the browser.',
+    keyFeatures: ['Institutional Rigor', 'No Cost Barrier', 'Full Provenance Footnotes'],
+    exampleQuery: 'What was Apple\'s Net Income for fiscal year 2025?',
+    gradient: 'linear-gradient(135deg, rgba(217, 119, 6, 0.07) 0%, rgba(234, 88, 12, 0.05) 100%)',
+  },
+];
 
 export default function WelcomePage({ onOpenTerminal, onLaunchQuery, onOpenAbout }) {
   return (
@@ -143,6 +211,70 @@ export default function WelcomePage({ onOpenTerminal, onLaunchQuery, onOpenAbout
             </p>
             <div className="pillar-tag">Calendar Mismatch Detection</div>
           </TiltCard>
+        </div>
+      </div>
+
+      {/* TARGET AUDIENCES & USE CASES SECTION */}
+      <div className="welcome-audiences-section">
+        <div className="welcome-section-header">
+          <div className="audiences-badge">
+            <Users size={14} color="var(--accent-primary)" />
+            <span>Target Audience & Impact</span>
+          </div>
+          <h2>Who Is Filing Sleuth Built For?</h2>
+          <p>
+            Engineered for professionals who make high-stakes decisions where a single hallucinated number
+            or fabricated citation is completely unacceptable.
+          </p>
+        </div>
+
+        <div className="audiences-grid">
+          {TARGET_AUDIENCES.map((aud) => (
+            <TiltCard
+              key={aud.id}
+              className="audience-card"
+              maxTilt={4}
+              scale={1.012}
+              style={{ background: aud.gradient }}
+            >
+              <div className="audience-card-top">
+                <div className="audience-icon-box">{aud.icon}</div>
+                <span className="audience-pill">{aud.badge}</span>
+              </div>
+
+              <h3 className="audience-title">{aud.title}</h3>
+              <div className="audience-subtitle">{aud.subtitle}</div>
+
+              <div className="audience-block pain-block">
+                <span className="block-label">The Pain Point Solved:</span>
+                <p>{aud.painPoint}</p>
+              </div>
+
+              <div className="audience-block benefit-block">
+                <span className="block-label">How Filing Sleuth Helps:</span>
+                <p>{aud.howItHelps}</p>
+              </div>
+
+              <div className="audience-features">
+                {aud.keyFeatures.map((feat, fIdx) => (
+                  <span key={fIdx} className="audience-feat-tag">{feat}</span>
+                ))}
+              </div>
+
+              <div className="audience-footer">
+                <span className="audience-example-label">Typical Workflow:</span>
+                <button
+                  type="button"
+                  className="audience-launch-btn"
+                  onClick={() => onLaunchQuery(aud.exampleQuery)}
+                  title={`Run workflow: "${aud.exampleQuery}"`}
+                >
+                  <span>Launch Workflow</span>
+                  <ArrowRight size={13} />
+                </button>
+              </div>
+            </TiltCard>
+          ))}
         </div>
       </div>
 
