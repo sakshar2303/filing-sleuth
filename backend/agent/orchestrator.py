@@ -20,6 +20,7 @@ from backend.agent.llm_client import LLMClient
 
 from backend.agent.query_planner import ExecutionPlan, QueryPlanner, SubQuestion
 from backend.agent.synthesis_agent import SynthesisAgent, SynthesisReport
+from backend.crossref.financial_dossier import CompanyFinancialDossier, FinancialDossierEngine
 from backend.crossref.forensic_radar import ForensicRadarEngine, ForensicScorecard
 from backend.indexing.bm25_index import BM25Index
 from backend.indexing.hybrid_search import HybridSearchEngine
@@ -53,6 +54,8 @@ class PipelineResult:
     synthesis_report: SynthesisReport | None = None
     computations: list[dict[str, Any]] = field(default_factory=list)
     forensic_scorecard: dict[str, Any] | None = None
+    financial_dossier: dict[str, Any] | None = None
+    chart_data: dict[str, Any] | None = None
     trace: list[PipelineTraceStep] = field(default_factory=list)
     total_chunks_indexed: int = 0
     all_quotes_verified: bool = True
@@ -103,6 +106,7 @@ class Orchestrator:
         )
         self.synthesis_agent = SynthesisAgent(llm_client=self.llm_client)
         self.forensic_engine = ForensicRadarEngine()
+        self.dossier_engine = FinancialDossierEngine()
 
         self._indexed_filings: set[str] = set()
 
@@ -225,69 +229,101 @@ class Orchestrator:
                 {"fact": fact.model_dump()},
             )
 
-        # Step 4: Computations (e.g. ratios, trend deltas) if needed
+        # Step 4: Multi-Year Financial Dossier & Deep Computations
         computations: list[dict[str, Any]] = []
-        if plan.requires_computation:
-            computations = self._run_computations(extracted_facts)
-            if computations:
-                await record_step(
-                    "COMPUTATION",
-                    f"Computed {len(computations)} cross-metric ratios / deltas",
-                    {"computations": computations},
-                )
-
-        # Step 4b: Forensic Accounting Radar (Accruals, DSO, Leverage)
+        primary_dossier: CompanyFinancialDossier | None = None
+        chart_data: dict[str, Any] | None = None
+        financial_dossier: dict[str, Any] | None = None
         forensic_scorecard: dict[str, Any] | None = None
+
         target_comps = list({f.company for f in extracted_facts if f.company})
         if not target_comps and plan.companies:
             target_comps = [c.ticker for c in plan.companies if c.ticker]
 
         if target_comps:
             primary_comp = target_comps[0]
-            # Try evaluate from extracted facts first
-            scorecard = self.forensic_engine.evaluate_company(primary_comp, extracted_facts)
+            comp_obj = next((c for c in plan.companies if c.ticker == primary_comp or c.name == primary_comp), None)
+            cik = comp_obj.cik if comp_obj else None
+            comp_name = comp_obj.name if comp_obj else primary_comp
 
-            # If not all metrics found in query's specific facts, fetch raw facts directly from SEC CIK
-            if not scorecard or len(scorecard.metrics) < 2:
-                comp_obj = next((c for c in plan.companies if c.ticker == primary_comp or c.name == primary_comp), None)
-                cik = comp_obj.cik if comp_obj else None
-                if not cik:
-                    try:
-                        resolved = await self.ticker_resolver.resolve(primary_comp)
-                        if resolved:
-                            cik = resolved.cik
-                    except Exception:
-                        pass
+            if not cik:
+                try:
+                    resolved = await self.ticker_resolver.resolve(primary_comp)
+                    if resolved:
+                        cik = resolved.cik
+                        comp_name = resolved.title
+                except Exception:
+                    pass
 
-                if cik:
-                    try:
+            if cik:
+                try:
+                    raw_facts = await self.xbrl_api.get_company_facts_raw(cik)
+                    dossier, extra_facts, extra_comps = self.dossier_engine.extract_dossier(
+                        primary_comp, comp_name, cik, raw_facts
+                    )
+                    if dossier and dossier.series:
+                        primary_dossier = dossier
+                        chart_data = dossier.chart_payload
+                        financial_dossier = dossier.model_dump()
+
+                        # Augment extracted_facts with verified multi-year statement facts (avoiding duplicates)
+                        existing_ids = {f.sub_question_id for f in extracted_facts}
+                        for ef in extra_facts:
+                            if ef.sub_question_id not in existing_ids:
+                                extracted_facts.append(ef)
+
+                        # Augment computations with multi-year margins and YoY growth rates
+                        for ec in extra_comps:
+                            computations.append(ec.__dict__)
+
+                        await record_step(
+                            "FINANCIAL_DOSSIER",
+                            f"Generated Multi-Year Financial Statement Dossier for {comp_name} ({len(dossier.series)} fiscal periods: {dossier.fiscal_years})",
+                            {"kpis": dossier.summary_kpis},
+                        )
+
+                        # Step 4b: Compute Forensic Radar from the same raw_facts
                         target_year = None
                         if plan.time_range and plan.time_range.years:
                             target_year = plan.time_range.years[0]
                         elif plan.sub_questions:
                             target_year = next((sq.target_fiscal_year for sq in plan.sub_questions if sq.target_fiscal_year), None)
-                        raw_scorecard = self.forensic_engine.evaluate_from_raw_facts(primary_comp, raw_facts, fiscal_year=target_year)
-                        if raw_scorecard:
-                            scorecard = raw_scorecard
-                    except Exception as ex:
-                        logger.warning("Failed to evaluate raw facts for forensic radar: %s", ex)
+                        scorecard = self.forensic_engine.evaluate_from_raw_facts(primary_comp, raw_facts, fiscal_year=target_year)
+                        if scorecard:
+                            forensic_scorecard = scorecard.to_dict()
+                            await record_step(
+                                "FORENSIC_RADAR",
+                                f"Computed Forensic Health Scorecard for {primary_comp}: {scorecard.overall_score}/100 ({scorecard.status_label})",
+                                {"scorecard": forensic_scorecard},
+                            )
+                except Exception as ex:
+                    logger.warning("Failed to extract financial dossier for %s: %s", primary_comp, ex)
 
-            if scorecard:
-                forensic_scorecard = scorecard.to_dict()
+        # If plan required explicit computations (e.g. peer ratios), run them
+        if plan.requires_computation:
+            extra_planned_comps = self._run_computations(extracted_facts)
+            if extra_planned_comps:
+                computations.extend(extra_planned_comps)
                 await record_step(
-                    "FORENSIC_RADAR",
-                    f"Computed Forensic Health Scorecard for {primary_comp}: {scorecard.overall_score}/100 ({scorecard.status_label})",
-                    {"scorecard": forensic_scorecard},
+                    "COMPUTATION",
+                    f"Computed {len(extra_planned_comps)} cross-metric ratios / deltas",
+                    {"computations": extra_planned_comps},
                 )
 
-        # Step 5: Synthesize final report with grounded citations
+        # Fallback forensic scorecard if not computed from raw_facts
+        if not forensic_scorecard and target_comps:
+            scorecard = self.forensic_engine.evaluate_company(target_comps[0], extracted_facts)
+            if scorecard:
+                forensic_scorecard = scorecard.to_dict()
+
+        # Step 5: Synthesize final report with grounded citations and multi-year dossier
         synthesis_report = await self.synthesis_agent.synthesize(
-            question, plan, extracted_facts, skeptic_mode=skeptic_mode
+            question, plan, extracted_facts, skeptic_mode=skeptic_mode, dossier=primary_dossier
         )
         await record_step(
             "SYNTHESIS",
             f"Synthesized report with {len(synthesis_report.citations)} citations",
-            {"summary": synthesis_report.executive_summary},
+            {"summary": synthesis_report.executive_summary[:200] + "..."},
         )
 
         await record_step("COMPLETE", "Pipeline execution finished successfully")
@@ -299,6 +335,8 @@ class Orchestrator:
             synthesis_report=synthesis_report,
             computations=computations,
             forensic_scorecard=forensic_scorecard,
+            financial_dossier=financial_dossier,
+            chart_data=chart_data,
             trace=trace,
             total_chunks_indexed=total_indexed,
             all_quotes_verified=all_quotes_verified,

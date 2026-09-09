@@ -74,6 +74,8 @@ def serialize_pipeline_result(res: PipelineResult) -> dict[str, Any]:
         "extracted_facts": [f.model_dump() for f in res.extracted_facts],
         "computations": res.computations,
         "forensic_scorecard": res.forensic_scorecard,
+        "financial_dossier": res.financial_dossier,
+        "chart_data": res.chart_data,
         "synthesis_report": res.synthesis_report.model_dump() if res.synthesis_report else None,
         "trace": [
             {
