@@ -261,8 +261,11 @@ class Orchestrator:
 
                 if cik:
                     try:
-                        raw_facts = await self.xbrl_api.get_company_facts_raw(cik)
-                        target_year = plan.fiscal_years[0] if plan.fiscal_years else None
+                        target_year = None
+                        if plan.time_range and plan.time_range.years:
+                            target_year = plan.time_range.years[0]
+                        elif plan.sub_questions:
+                            target_year = next((sq.target_fiscal_year for sq in plan.sub_questions if sq.target_fiscal_year), None)
                         raw_scorecard = self.forensic_engine.evaluate_from_raw_facts(primary_comp, raw_facts, fiscal_year=target_year)
                         if raw_scorecard:
                             scorecard = raw_scorecard
