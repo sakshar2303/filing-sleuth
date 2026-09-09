@@ -21,6 +21,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import TiltCard from './TiltCard';
+import BrandLogo from './BrandLogo';
 
 const TARGET_AUDIENCES = [
   {
@@ -90,6 +91,12 @@ export default function WelcomePage({ onOpenTerminal, onLaunchQuery, onOpenAbout
     <div className="welcome-container">
       {/* Hero Banner */}
       <div className="welcome-hero">
+        <div className="welcome-hero-brand">
+          <div className="hero-logo-wrapper" title="Filing Sleuth — Forensic SEC Ground Truth">
+            <BrandLogo size={58} animated />
+          </div>
+        </div>
+
         <div className="welcome-badge">
           <Sparkles size={14} color="var(--accent-primary)" />
           <span>SEC EDGAR AUTONOMOUS FORENSIC AGENT</span>

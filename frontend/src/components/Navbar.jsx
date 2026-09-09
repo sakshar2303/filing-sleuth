@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShieldCheck, Database, Sparkles, BookOpen, Home, Terminal } from 'lucide-react';
+import { ShieldCheck, Database, BookOpen, Home, Terminal } from 'lucide-react';
+import BrandLogo from './BrandLogo';
 
 export default function Navbar({ isStreamingActive, serverHealthy, activeView, setActiveView }) {
   return (
@@ -12,7 +13,7 @@ export default function Navbar({ isStreamingActive, serverHealthy, activeView, s
         title="Return to Welcome Tour"
       >
         <div className="logo-glow">
-          <Sparkles size={18} color="#ffffff" />
+          <BrandLogo size={26} animated />
         </div>
         <div className="brand-text-wrap">
           <span className="brand-title">FILING SLEUTH</span>

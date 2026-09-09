@@ -8,11 +8,11 @@ import {
   Plus,
   PanelLeftClose,
   PanelLeftOpen,
-  Sparkles,
   Database,
   Trash2,
   ArrowUpRight
 } from 'lucide-react';
+import BrandLogo from './BrandLogo';
 
 const WATCHLIST = [
   { ticker: 'AAPL', name: 'Apple' },
@@ -38,12 +38,16 @@ export default function Sidebar({
     <aside className={`analyst-sidebar ${isCollapsed ? 'collapsed' : 'expanded'}`}>
       {/* Sidebar Header */}
       <div className="sidebar-top">
-        {!isCollapsed && (
+        {!isCollapsed ? (
           <div className="sidebar-brand" onClick={() => setActiveView('welcome')}>
             <div className="sidebar-logo">
-              <Sparkles size={16} color="#ffffff" />
+              <BrandLogo size={22} animated />
             </div>
             <span className="sidebar-brand-text">FILING SLEUTH</span>
+          </div>
+        ) : (
+          <div className="sidebar-brand-collapsed" onClick={() => setActiveView('welcome')} title="Filing Sleuth">
+            <BrandLogo size={24} animated />
           </div>
         )}
 
