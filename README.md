@@ -7,6 +7,8 @@
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.14-38bdf8?style=flat-square)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-slate?style=flat-square)](./LICENSE)
 
+🔗 **[Live Demo](https://sakshar2303.github.io/filing-sleuth/)** · 📡 **[API Health](https://filing-sleuth-api.onrender.com/api/health)** · 📖 **[API Docs](https://filing-sleuth-api.onrender.com/docs)**
+
 ---
 
 ## 📌 Problem Statement

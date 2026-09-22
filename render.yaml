@@ -1,0 +1,22 @@
+# Render Blueprint — Infrastructure-as-Code
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: filing-sleuth-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: SEC_USER_AGENT
+        value: "FilingSleuth research-agent contact@filingsleuth.dev"
+      - key: EMBEDDING_PROVIDER
+        value: "local"
+      - key: EMBEDDING_MODEL
+        value: "all-MiniLM-L6-v2"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: SEC_RATE_LIMIT
+        value: "8"

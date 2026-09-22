@@ -13,8 +13,9 @@ import AnalystLaunchpad from './components/AnalystLaunchpad';
 import Footer from './components/Footer';
 import { AlertCircle, FileSearch, Sparkles, BookOpen, ArrowRight } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
-const WS_BASE = 'ws://localhost:8000/ws/query';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+const WS_PROTOCOL = API_BASE.startsWith('https') ? 'wss' : 'ws';
+const WS_BASE = `${WS_PROTOCOL}://${API_BASE.replace(/^https?:\/\//, '')}/ws/query`;
 
 export default function App() {
   const [activeView, setActiveView] = useState('welcome'); // 'welcome' | 'workspace' | 'about'

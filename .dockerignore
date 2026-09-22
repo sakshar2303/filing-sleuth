@@ -1,0 +1,48 @@
+# Version control
+.git
+.gitignore
+
+# Frontend (deployed separately to GitHub Pages)
+frontend/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Cache data (rebuilt at runtime)
+cache_data/
+chroma_data/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Test & dev artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment files (secrets set via Render dashboard)
+.env
+.env.local
+
+# Docs
+*.md
+!README.md
+
+# Agents config
+.agents/
+
+# Scratch
+scratch/
