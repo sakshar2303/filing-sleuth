@@ -76,8 +76,8 @@ class SECClient:
         self._rate_limiter = RateLimiter(self.settings.sec_rate_limit)
         self._client: httpx.AsyncClient | None = None
 
-    async def __aenter__(self) -> SECClient:
-        self._client = httpx.AsyncClient(
+    def _create_client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
             headers={
                 "User-Agent": self.settings.sec_user_agent,
                 "Accept-Encoding": "gzip, deflate",
@@ -86,9 +86,16 @@ class SECClient:
             follow_redirects=True,
             http2=True,
         )
+
+    async def __aenter__(self) -> SECClient:
+        if self._client is None:
+            self._client = self._create_client()
         return self
 
     async def __aexit__(self, *exc: Any) -> None:
+        await self.close()
+
+    async def close(self) -> None:
         if self._client:
             await self._client.aclose()
             self._client = None
@@ -96,7 +103,7 @@ class SECClient:
     @property
     def client(self) -> httpx.AsyncClient:
         if self._client is None:
-            raise RuntimeError("SECClient must be used as an async context manager")
+            self._client = self._create_client()
         return self._client
 
     async def _request(

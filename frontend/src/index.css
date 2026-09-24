@@ -2369,7 +2369,8 @@ h1, h2, h3, h4 {
 }
 
 .analyst-sidebar.collapsed {
-  width: 64px;
+  width: 0;
+  border-right: none;
 }
 
 .sidebar-top {

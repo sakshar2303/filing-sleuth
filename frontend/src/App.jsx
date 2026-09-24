@@ -19,7 +19,8 @@ const WS_BASE = `${WS_PROTOCOL}://${API_BASE.replace(/^https?:\/\//, '')}/ws/que
 
 export default function App() {
   const [activeView, setActiveView] = useState('welcome'); // 'welcome' | 'workspace' | 'about'
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+
   const [skepticMode, setSkepticMode] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -228,6 +229,8 @@ export default function App() {
           serverHealthy={serverHealthy}
           activeView={activeView}
           setActiveView={setActiveView}
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
 
 

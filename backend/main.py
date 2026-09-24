@@ -36,12 +36,13 @@ ticker_resolver_instance: TickerResolver | None = None
 async def lifespan(app: FastAPI):
     global sec_client_instance, ticker_resolver_instance
     logger.info("Initializing SECClient instance...")
-    sec_client_instance = SECClient()
-    ticker_resolver_instance = TickerResolver(sec_client_instance)
-    yield
+    async with SECClient() as client:
+        sec_client_instance = client
+        ticker_resolver_instance = TickerResolver(sec_client_instance)
+        yield
     logger.info("Closing SECClient instance...")
-    if sec_client_instance:
-        await sec_client_instance.close()
+    sec_client_instance = None
+    ticker_resolver_instance = None
 
 
 app = FastAPI(

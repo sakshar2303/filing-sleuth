@@ -1,24 +1,44 @@
 import React from 'react';
-import { ShieldCheck, Database, BookOpen, Home, Terminal } from 'lucide-react';
+import { ShieldCheck, Database, BookOpen, Home, Terminal, Menu } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 
-export default function Navbar({ isStreamingActive, serverHealthy, activeView, setActiveView }) {
+export default function Navbar({ isStreamingActive, serverHealthy, activeView, setActiveView, isSidebarCollapsed, setIsSidebarCollapsed }) {
   return (
     <header className="header-nav">
-      {/* Brand & Edition */}
-      <div 
-        className="brand-badge" 
-        onClick={() => setActiveView && setActiveView('welcome')} 
-        style={{ cursor: 'pointer' }}
-        title="Return to Welcome Tour"
-      >
-        <div className="logo-glow">
-          <BrandLogo size={26} animated />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {isSidebarCollapsed && (
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Open Sidebar"
+          >
+            <Menu size={20} />
+          </button>
+        )}
+        {/* Brand & Edition */}
+        <div 
+          className="brand-badge" 
+          onClick={() => setActiveView && setActiveView('welcome')} 
+          style={{ cursor: 'pointer' }}
+          title="Return to Welcome Tour"
+        >
+          <div className="logo-glow">
+            <BrandLogo size={26} animated />
+          </div>
+          <div className="brand-text-wrap">
+            <span className="brand-title">FILING SLEUTH</span>
+          </div>
+          <span className="version-pill">SEC EDGAR</span>
         </div>
-        <div className="brand-text-wrap">
-          <span className="brand-title">FILING SLEUTH</span>
-        </div>
-        <span className="version-pill">SEC EDGAR</span>
       </div>
 
       {/* Primary View Switcher */}
