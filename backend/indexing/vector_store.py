@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 
 import chromadb
-from chromadb.utils import embedding_functions
 
 from backend.config import get_settings
 from backend.parsing.chunk_builder import SectionChunk
@@ -35,6 +34,9 @@ class VectorSearchResult:
 class VectorStore:
     """ChromaDB-backed vector store for SEC filing chunks.
 
+    Uses an ephemeral in-memory client so it works on Render's free tier
+    (no persistent disk required, no torch startup cost).
+
     Usage:
         store = VectorStore()
         store.add_chunks(chunks)
@@ -44,28 +46,38 @@ class VectorStore:
     COLLECTION_NAME = "sec_filing_chunks"
 
     def __init__(self, persist_dir: Path | str | None = None) -> None:
-        settings = get_settings()
-        if persist_dir is None:
-            persist_dir = settings.chroma_db_path
+        self._settings = get_settings()
+        self._persist_dir = Path(persist_dir) if persist_dir else self._settings.chroma_db_path
 
-        self.persist_dir = Path(persist_dir)
-        self.persist_dir.mkdir(parents=True, exist_ok=True)
-
-        self._client = chromadb.PersistentClient(path=str(self.persist_dir))
-        self._embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=settings.embedding_model,
-        )
+        # Use in-memory client to avoid torch/sentence-transformers RAM cost at startup.
+        # The model is lazy-loaded only when add_chunks is first called.
+        self._client = chromadb.EphemeralClient()
+        self._embedding_fn: Any | None = None  # deferred
         self._collection = self._client.get_or_create_collection(
             name=self.COLLECTION_NAME,
-            embedding_function=self._embedding_fn,
             metadata={"hnsw:space": "cosine"},
         )
         logger.info(
-            "Initialized VectorStore at %s (collection: %s, existing items: %d)",
-            self.persist_dir,
+            "Initialized VectorStore (ephemeral in-memory, collection: %s)",
             self.COLLECTION_NAME,
-            self._collection.count(),
         )
+
+    def _get_embedding_fn(self) -> Any:
+        """Lazy-load the embedding function on first use."""
+        if self._embedding_fn is None:
+            logger.info("Loading embedding model: %s", self._settings.embedding_model)
+            from chromadb.utils import embedding_functions  # noqa: PLC0415
+            self._embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=self._settings.embedding_model,
+            )
+            # Re-create collection with embedding function
+            self._client.delete_collection(self.COLLECTION_NAME)
+            self._collection = self._client.get_or_create_collection(
+                name=self.COLLECTION_NAME,
+                embedding_function=self._embedding_fn,
+                metadata={"hnsw:space": "cosine"},
+            )
+        return self._embedding_fn
 
     def count(self) -> int:
         """Return total number of chunks in the vector collection."""
@@ -84,6 +96,8 @@ class VectorStore:
         if not chunks:
             return 0
 
+        # Trigger lazy loading of the embedding model on first call
+        self._get_embedding_fn()
         total_upserted = 0
         for i in range(0, len(chunks), batch_size):
             batch = chunks[i:i + batch_size]
@@ -211,8 +225,8 @@ class VectorStore:
     def clear(self) -> None:
         """Reset the collection."""
         self._client.delete_collection(self.COLLECTION_NAME)
+        self._embedding_fn = None
         self._collection = self._client.get_or_create_collection(
             name=self.COLLECTION_NAME,
-            embedding_function=self._embedding_fn,
             metadata={"hnsw:space": "cosine"},
         )
