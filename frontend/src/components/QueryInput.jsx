@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ArrowRight, X, Building2, Sparkles, Database, Zap, ShieldAlert } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
 export default function QueryInput({ onSubmit, isLoading, currentQuery, setQuery, skepticMode, setSkepticMode }) {
   const [suggestions, setSuggestions] = useState([]);
