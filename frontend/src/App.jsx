@@ -142,9 +142,10 @@ export default function App() {
       };
 
       ws.onerror = async () => {
-        console.warn('WebSocket failed, falling back to REST endpoint...');
+        console.warn('WebSocket failed, falling back to SSE stream...');
         if (!receivedResult) {
-          await executeViaRest(queryText, isSkeptic);
+          ws.close();
+          await executeViaSSE(queryText, isSkeptic);
         }
       };
 
@@ -153,28 +154,63 @@ export default function App() {
       };
 
     } catch (wsErr) {
-      console.warn('WebSocket connection error, using REST fallback:', wsErr);
-      await executeViaRest(queryText, isSkeptic);
+      console.warn('WebSocket connection error, using SSE fallback:', wsErr);
+      await executeViaSSE(queryText, isSkeptic);
     }
   };
 
-  const executeViaRest = async (queryText, isSkeptic = false) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: queryText, skeptic_mode: isSkeptic }),
-      });
+  // SSE fallback: keeps the connection alive through Render's 30s timeout
+  const executeViaSSE = async (queryText, isSkeptic = false) => {
+    const accumulatedTrace = [];
+    const params = new URLSearchParams({
+      question: queryText,
+      skeptic_mode: String(isSkeptic),
+    });
+    const url = `${API_BASE}/api/stream?${params.toString()}`;
 
+    try {
+      const response = await fetch(url, { headers: { Accept: 'text/event-stream' } });
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || `Server error: ${response.statusText}`);
+        const text = await response.text().catch(() => response.statusText);
+        throw new Error(`Server error ${response.status}: ${text}`);
       }
 
-      const data = await response.json();
-      setTrace(data.trace || []);
-      setResult(data);
-      saveToHistory(queryText, data, data.trace || []);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop(); // keep incomplete trailing chunk
+
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith('data:')) continue;
+          const jsonStr = line.slice(5).trim();
+          try {
+            const msg = JSON.parse(jsonStr);
+            if (msg.type === 'ping') continue;
+            if (msg.type === 'trace') {
+              accumulatedTrace.push(msg);
+              setTrace((prev) => [...prev, msg]);
+            } else if (msg.type === 'result') {
+              setResult(msg.data);
+              saveToHistory(queryText, msg.data, accumulatedTrace);
+              setIsLoading(false);
+              setIsLiveStreaming(false);
+              return;
+            } else if (msg.type === 'error') {
+              throw new Error(msg.message || 'Pipeline execution failed.');
+            }
+          } catch (parseErr) {
+            console.error('SSE parse error:', parseErr);
+          }
+        }
+      }
     } catch (err) {
       setError(err.message || 'Failed to communicate with research backend.');
     } finally {

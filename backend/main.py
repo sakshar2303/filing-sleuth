@@ -5,18 +5,21 @@ Provides REST endpoints and WebSocket streaming for:
 - One-click benchmark queries
 - Interactive question submission with streaming execution trace
 - Investor report synthesis with verified citations and provenance
+- Server-Sent Events (SSE) streaming fallback for environments where WebSockets fail
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.agent.orchestrator import Orchestrator, PipelineResult, PipelineTraceStep
@@ -145,6 +148,83 @@ async def execute_query(req: QueryRequest):
     except Exception as e:
         logger.error("Error executing query: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/stream")
+async def stream_query(question: str, skeptic_mode: bool = False):
+    """SSE streaming endpoint — keeps the connection alive through Render's 30s timeout.
+
+    Emits:
+      - data: {"type": "ping"}                        — heartbeat every 10s
+      - data: {"type": "trace", ...step fields...}     — live trace steps
+      - data: {"type": "result", "data": {...}}        — final complete result
+      - data: {"type": "error", "message": "..."}      — on failure
+    """
+    if not question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+
+    global sec_client_instance
+    if not sec_client_instance:
+        sec_client_instance = SECClient()
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        # Queue to bridge pipeline callbacks → SSE stream
+        queue: asyncio.Queue[str] = asyncio.Queue()
+        DONE_SENTINEL = "__DONE__"
+
+        async def on_trace_step(step: PipelineTraceStep) -> None:
+            payload = json.dumps({
+                "type": "trace",
+                "step_name": step.step_name,
+                "description": step.description,
+                "data": step.data,
+            })
+            await queue.put(f"data: {payload}\n\n")
+
+        async def run_pipeline() -> None:
+            try:
+                orchestrator = Orchestrator(sec_client_instance)  # type: ignore[arg-type]
+                result = await orchestrator.run(
+                    question, on_trace_step=on_trace_step, skeptic_mode=skeptic_mode
+                )
+                result_payload = json.dumps({
+                    "type": "result",
+                    "data": serialize_pipeline_result(result),
+                })
+                await queue.put(f"data: {result_payload}\n\n")
+            except Exception as exc:
+                logger.error("SSE pipeline error: %s", exc, exc_info=True)
+                err_payload = json.dumps({"type": "error", "message": str(exc)})
+                await queue.put(f"data: {err_payload}\n\n")
+            finally:
+                await queue.put(DONE_SENTINEL)
+
+        # Run the pipeline as a background task so we can interleave heartbeats
+        pipeline_task = asyncio.create_task(run_pipeline())
+
+        try:
+            while True:
+                try:
+                    # Wait up to 10 seconds for the next event; emit a ping if nothing arrives
+                    item = await asyncio.wait_for(queue.get(), timeout=10.0)
+                except asyncio.TimeoutError:
+                    yield "data: {\"type\": \"ping\"}\n\n"
+                    continue
+
+                if item is DONE_SENTINEL:
+                    break
+                yield item
+        finally:
+            pipeline_task.cancel()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Disable Nginx/proxy buffering
+        },
+    )
 
 
 @app.websocket("/ws/query")
