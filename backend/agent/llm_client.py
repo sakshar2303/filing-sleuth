@@ -124,23 +124,13 @@ class LLMClient:
         else:
             augmented_system = system
 
-        # Claude Sonnet 4 and later (extended thinking models) do not accept
-        # the `temperature` parameter — it must be omitted entirely.
-        model_name = self.settings.anthropic_model
-        supports_temperature = not any(
-            model_name.startswith(prefix)
-            for prefix in ("claude-sonnet-4", "claude-opus-4", "claude-3-7")
-        )
-
         create_kwargs: dict[str, Any] = {
-            "model": model_name,
-            "max_tokens": 16000 if not supports_temperature else 4096,
+            "model": self.settings.anthropic_model,
+            "max_tokens": 16000,
             "system": augmented_system,
             "messages": [{"role": "user", "content": prompt}],
         }
-        if supports_temperature:
-            create_kwargs["temperature"] = temperature
-
+        
         response = await self.anthropic_client.messages.create(**create_kwargs)
 
         content = response.content[0].text if response.content else ""
