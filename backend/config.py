@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     # ── LLM ────────────────────────────────────────────────────────────────
     anthropic_api_key: str = Field(default="", description="Anthropic API key for Claude")
     openai_api_key: str = Field(default="", description="OpenAI API key")
+    openai_base_url: str | None = Field(default=None, description="Custom base URL for OpenAI-compatible APIs (like Groq, OpenRouter, Gemini)")
     anthropic_model: str = "claude-sonnet-4-20250514"
     openai_model: str = "gpt-4o"
 

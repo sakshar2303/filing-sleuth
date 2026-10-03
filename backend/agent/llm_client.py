@@ -48,6 +48,7 @@ class LLMClient:
                 import openai
                 self.openai_client = openai.AsyncOpenAI(
                     api_key=self.settings.openai_api_key,
+                    base_url=self.settings.openai_base_url,
                 )
                 logger.info("Initialized OpenAI client with model %s", self.settings.openai_model)
             except Exception as e:
@@ -149,33 +150,46 @@ class LLMClient:
         response_model: type[T] | None,
         temperature: float,
     ) -> str | T:
-        """Call OpenAI API."""
+        """Call OpenAI API (or any OpenAI-compatible API like Groq/Gemini)."""
+        if response_model is not None:
+            schema_json = json.dumps(response_model.model_json_schema(), indent=2)
+            augmented_system = (
+                f"{system}\n\n"
+                f"You MUST respond ONLY with valid JSON conforming to this JSON schema:\n"
+                f"{schema_json}\n"
+                f"Do not include any markdown formatting around the JSON (e.g. no ```json ``` fences)."
+            )
+        else:
+            augmented_system = system
+
         messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
+        if augmented_system:
+            messages.append({"role": "system", "content": augmented_system})
         messages.append({"role": "user", "content": prompt})
 
+        # Groq and some open source models crash with temperature=0.0, use 0.01
+        safe_temp = 0.01 if temperature == 0.0 else temperature
+
+        create_kwargs: dict[str, Any] = {
+            "model": self.settings.openai_model,
+            "messages": messages,
+            "temperature": safe_temp,
+        }
+        
+        # Use json_object mode if requesting structured output
         if response_model is not None:
-            completion = await self.openai_client.beta.chat.completions.parse(
-                model=self.settings.openai_model,
-                messages=messages,
-                response_format=response_model,
-                temperature=temperature,
-            )
-            if completion.usage:
-                self.total_prompt_tokens += completion.usage.prompt_tokens
-                self.total_completion_tokens += completion.usage.completion_tokens
-            return completion.choices[0].message.parsed
-        else:
-            completion = await self.openai_client.chat.completions.create(
-                model=self.settings.openai_model,
-                messages=messages,
-                temperature=temperature,
-            )
-            if completion.usage:
-                self.total_prompt_tokens += completion.usage.prompt_tokens
-                self.total_completion_tokens += completion.usage.completion_tokens
-            return completion.choices[0].message.content or ""
+            create_kwargs["response_format"] = {"type": "json_object"}
+
+        completion = await self.openai_client.chat.completions.create(**create_kwargs)
+
+        content = completion.choices[0].message.content or ""
+        if completion.usage:
+            self.total_prompt_tokens += completion.usage.prompt_tokens
+            self.total_completion_tokens += completion.usage.completion_tokens
+
+        if response_model is not None:
+            return self._parse_json_to_model(content, response_model)
+        return content
 
     def _parse_json_to_model(self, raw: str, model_cls: type[T]) -> T:
         """Extract and parse JSON from LLM text output into Pydantic model."""
